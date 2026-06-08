@@ -1,0 +1,20 @@
+# ============================================================
+#  Confidential raw survey data - NEVER push to GitHub
+#  (contains respondent names, contact numbers, GPS, PII)
+# ============================================================
+*.dta
+*.csv
+*.xlsx
+prefill_data_PULSE.xlsx
+target_file.xlsx
+Sargodha*.csv
+Sargodha*.dta
+Sargodha*.xlsx
+
+# Local templates / scratch
+template.html
+_*.js
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

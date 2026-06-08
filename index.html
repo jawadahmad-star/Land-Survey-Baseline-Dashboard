@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Land Survey Baseline Dashboard — Research Solutions</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --rs-red:#E8192C; --rs-red-dark:#B5101E; --rs-red-mid:#C41020; --rs-red-muted:#F47885; --rs-red-light:#FDECEA; --rs-red-50:#FFF5F5;
+      --rs-navy:#2D3450; --rs-navy-dark:#1E2438; --rs-navy-mid:#3D4566; --rs-navy-soft:#6B7494; --rs-navy-light:#E8EAF2; --rs-navy-50:#F2F3F8;
+      --rs-cream:#FAF8F4; --white:#FFFFFF;
+      --teal-700:#0E7490; --teal-500:#0891B2; --teal-300:#67E8F9; --teal-100:#CFFAFE; --teal-50:#ECFEFF;
+      --amber-600:#D97706; --amber-500:#F59E0B; --amber-400:#FBBF24; --amber-100:#FEF3C7; --amber-50:#FFFBEB;
+      --purple-700:#6D28D9; --purple-500:#8B5CF6; --purple-100:#EDE9FE; --purple-50:#F5F3FF;
+      --green-600:#16A34A; --green-100:#DCFCE7; --green-50:#F0FDF4;
+      --n-900:#0f172a; --n-800:#1e293b; --n-700:#334155; --n-600:#475569; --n-400:#94a3b8; --n-200:#e2e8f0; --n-100:#f1f5f9;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Inter',sans-serif; background:var(--rs-cream); color:var(--rs-navy); min-height:100vh; }
+
+    .header { background:var(--rs-navy); color:white; position:sticky; top:0; z-index:100; box-shadow:0 4px 24px rgba(30,36,56,.40); border-bottom:3px solid var(--rs-red); }
+    .header-inner { max-width:1440px; margin:0 auto; padding:0 32px; display:flex; flex-direction:column; }
+    .header-top { display:flex; justify-content:space-between; align-items:center; padding:14px 0 12px; border-bottom:1px solid rgba(255,255,255,.08); }
+    .header-logo-wrap img { height:46px; display:block; }
+    .header-study { text-align:center; flex:1; padding:0 24px; }
+    .header-study-title { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:#fff; letter-spacing:-.2px; }
+    .header-study-sub { font-size:11px; color:rgba(255,255,255,.55); letter-spacing:.6px; text-transform:uppercase; margin-top:3px; }
+    .header-meta { text-align:right; font-size:12px; color:rgba(255,255,255,.55); line-height:1.7; }
+    .header-meta strong { color:rgba(255,255,255,.9); font-size:13px; }
+    .header-pill { display:inline-block; background:var(--rs-red); color:#fff; font-size:10px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; padding:3px 10px; border-radius:99px; margin-top:4px; }
+
+    .nav-tabs { display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; }
+    .nav-tabs::-webkit-scrollbar { display:none; }
+    .nav-tab { padding:10px 18px; font-size:12.5px; font-weight:500; color:rgba(255,255,255,.55); cursor:pointer; border-radius:8px 8px 0 0; border:none; background:transparent; white-space:nowrap; transition:all .2s; letter-spacing:.2px; }
+    .nav-tab:hover { color:rgba(255,255,255,.9); background:rgba(255,255,255,.06); }
+    .nav-tab.active { color:var(--rs-navy); background:var(--rs-cream); font-weight:700; border-top:2px solid var(--rs-red); }
+
+    .main { max-width:1440px; margin:0 auto; padding:28px 32px 60px; }
+    .panel { display:none; }
+    .panel.active { display:block; animation:fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    .section-header { margin-bottom:28px; padding-bottom:16px; border-bottom:2px solid var(--rs-navy-light); display:flex; align-items:flex-start; gap:14px; }
+    .section-header-accent { width:4px; min-height:52px; border-radius:99px; background:var(--rs-red); flex-shrink:0; margin-top:4px; }
+    .section-header h2 { font-size:26px; font-weight:700; color:var(--rs-navy); font-family:'Playfair Display',serif; }
+    .section-header p { font-size:14px; color:var(--n-600); margin-top:6px; line-height:1.65; max-width:820px; }
+
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:28px; }
+    .kpi-card { background:white; border-radius:14px; padding:22px 20px; box-shadow:0 1px 4px rgba(45,52,80,.07),0 4px 16px rgba(45,52,80,.05); border-left:4px solid var(--rs-red); transition:transform .2s,box-shadow .2s; position:relative; overflow:hidden; }
+    .kpi-card::after { content:''; position:absolute; top:0; right:0; width:80px; height:80px; background:var(--rs-red-50); border-radius:0 14px 0 80px; }
+    .kpi-card:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(45,52,80,.12); }
+    .kpi-card.navy { border-left-color:var(--rs-navy); } .kpi-card.navy::after { background:var(--rs-navy-50); }
+    .kpi-card.amber { border-left-color:var(--amber-500); } .kpi-card.amber::after { background:var(--amber-50); }
+    .kpi-card.teal { border-left-color:var(--teal-500); } .kpi-card.teal::after { background:var(--teal-50); }
+    .kpi-card.purple { border-left-color:var(--purple-500); } .kpi-card.purple::after { background:var(--purple-50); }
+    .kpi-card.green { border-left-color:var(--green-600); } .kpi-card.green::after { background:var(--green-50); }
+    .kpi-icon { font-size:26px; margin-bottom:10px; position:relative; z-index:1; }
+    .kpi-value { font-size:32px; font-weight:800; color:var(--rs-navy); line-height:1; position:relative; z-index:1; }
+    .kpi-label { font-size:12px; color:var(--n-600); margin-top:6px; text-transform:uppercase; letter-spacing:.5px; font-weight:500; position:relative; z-index:1; }
+    .kpi-delta { font-size:11px; font-weight:600; margin-top:8px; padding:3px 8px; border-radius:99px; display:inline-block; position:relative; z-index:1; }
+    .kpi-delta.up { background:var(--teal-100); color:var(--teal-700); }
+    .kpi-delta.down { background:var(--rs-red-light); color:var(--rs-red-dark); }
+    .kpi-delta.neutral { background:var(--amber-100); color:var(--amber-600); }
+    .kpi-delta.navy { background:var(--rs-navy-light); color:var(--rs-navy); }
+
+    .chart-grid { display:grid; gap:20px; margin-bottom:24px; }
+    .chart-grid.cols-2 { grid-template-columns:repeat(2,1fr); }
+    .chart-grid.cols-3 { grid-template-columns:repeat(3,1fr); }
+    .chart-card { background:white; border-radius:14px; padding:24px; box-shadow:0 1px 4px rgba(45,52,80,.07),0 4px 16px rgba(45,52,80,.05); }
+    .chart-card.full { grid-column:1/-1; }
+    .chart-card h3 { font-size:14.5px; font-weight:700; color:var(--rs-navy); margin-bottom:4px; padding-left:10px; border-left:3px solid var(--rs-red); }
+    .chart-desc { font-size:12px; color:var(--n-600); margin:6px 0 18px 13px; line-height:1.5; }
+    .chart-wrap canvas { max-height:280px; }
+    .chart-wrap.tall canvas { max-height:360px; }
+
+    .insight-box { border-radius:12px; padding:16px 20px; margin-bottom:20px; border-left:4px solid; font-size:13.5px; line-height:1.65; }
+    .insight-box.primary { background:var(--rs-red-light); border-color:var(--rs-red); color:#6B0A12; }
+    .insight-box.navy { background:var(--rs-navy-light); border-color:var(--rs-navy); color:var(--rs-navy-dark); }
+    .insight-box.amber { background:var(--amber-100); border-color:var(--amber-500); color:#78350f; }
+    .insight-box.teal { background:var(--teal-100); border-color:var(--teal-500); color:var(--teal-700); }
+    .insight-box.purple { background:var(--purple-100); border-color:var(--purple-500); color:var(--purple-700); }
+    .insight-box strong { font-weight:700; }
+    .insight-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+
+    .callout-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:24px; }
+    .callout { border-radius:12px; padding:16px; display:flex; gap:12px; align-items:flex-start; }
+    .callout.primary { background:var(--rs-red-light); } .callout.navy { background:var(--rs-navy-light); }
+    .callout.amber { background:var(--amber-100); } .callout.teal { background:var(--teal-100); } .callout.purple { background:var(--purple-100); }
+    .callout-icon { font-size:24px; flex-shrink:0; margin-top:2px; }
+    .callout-body h4 { font-size:14px; font-weight:700; color:var(--rs-navy); }
+    .callout-body p { font-size:12.5px; color:var(--n-600); margin-top:4px; line-height:1.5; }
+
+    .footnote { font-size:11px; color:var(--n-400); margin-top:18px; padding-top:12px; border-top:1px solid var(--n-200); line-height:1.5; }
+    .page-footer { background:var(--rs-navy); color:rgba(255,255,255,.45); font-size:11.5px; text-align:center; padding:18px 32px; letter-spacing:.3px; border-top:3px solid var(--rs-red); margin-top:40px; }
+    .page-footer strong { color:rgba(255,255,255,.8); }
+
+    /* ===== Mouza Completion ===== */
+    .mz-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:18px; }
+    .mz-search { flex:1; min-width:240px; padding:11px 16px; border:2px solid var(--n-200); border-radius:10px; font-family:'Inter',sans-serif; font-size:14px; color:var(--rs-navy); outline:none; transition:border-color .2s; }
+    .mz-search:focus { border-color:var(--rs-red); }
+    .mz-filter { padding:10px 14px; border:2px solid var(--n-200); border-radius:10px; font-family:'Inter',sans-serif; font-size:13px; color:var(--rs-navy); background:#fff; cursor:pointer; outline:none; }
+    .mz-filter:focus { border-color:var(--rs-red); }
+    .mz-count { font-size:12.5px; color:var(--n-600); font-weight:600; margin-left:auto; }
+
+    .mz-table-wrap { background:white; border-radius:14px; box-shadow:0 1px 4px rgba(45,52,80,.07),0 4px 16px rgba(45,52,80,.05); overflow:hidden; }
+    .mz-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .mz-table th { background:var(--rs-navy); color:rgba(255,255,255,.92); font-weight:600; text-align:left; padding:13px 14px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; cursor:pointer; user-select:none; white-space:nowrap; position:sticky; top:0; }
+    .mz-table th:hover { background:var(--rs-navy-mid); }
+    .mz-table th.num, .mz-table td.num { text-align:center; }
+    .mz-table th .arrow { font-size:9px; opacity:.6; margin-left:3px; }
+    .mz-table td { padding:11px 14px; border-bottom:1px solid var(--n-100); color:var(--n-700); }
+    .mz-table tbody tr:hover td { background:var(--rs-navy-50); }
+    .mz-table tbody tr:last-child td { border-bottom:none; }
+    .mz-mauza { font-weight:600; color:var(--rs-navy); }
+    .mz-tehsil { font-size:11px; color:var(--n-400); text-transform:uppercase; letter-spacing:.4px; }
+    .mz-frac { font-weight:600; }
+    .mz-frac .done { color:var(--rs-navy); } .mz-frac .sep { color:var(--n-400); } .mz-frac .tgt { color:var(--n-400); }
+    .mz-bar { height:7px; width:90px; background:var(--n-100); border-radius:99px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:8px; }
+    .mz-bar > span { display:block; height:100%; border-radius:99px; }
+    .mz-pct { font-weight:700; font-size:12.5px; }
+    .badge { display:inline-block; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:600; white-space:nowrap; }
+    .badge-green { background:var(--green-100); color:var(--green-600); }
+    .badge-amber { background:var(--amber-100); color:var(--amber-600); }
+    .badge-grey  { background:var(--n-100);     color:var(--n-400); }
+    .badge-red   { background:var(--rs-red-light); color:var(--rs-red-dark); }
+
+    @media (max-width:1000px) {
+      .chart-grid.cols-2,.chart-grid.cols-3 { grid-template-columns:1fr; }
+      .insight-row { grid-template-columns:1fr; }
+      .main { padding:20px 16px 40px; }
+    }
+    @media (max-width:640px) {
+      .kpi-grid { grid-template-columns:repeat(2,1fr); }
+      .header-inner { padding:0 16px; }
+      .header-study-title { font-size:16px; }
+    }
+
+    .live-banner { background:linear-gradient(90deg,var(--rs-navy-dark) 0%,var(--rs-navy) 100%); border-bottom:2px solid var(--amber-500); padding:10px 32px; display:flex; align-items:center; justify-content:center; gap:12px; font-size:12px; color:rgba(255,255,255,.75); letter-spacing:.3px; flex-wrap:wrap; }
+    .live-banner .live-pill { background:var(--amber-500); color:var(--rs-navy-dark); font-size:10px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:3px 10px; border-radius:99px; }
+    .live-banner .live-dot { width:8px; height:8px; border-radius:99px; background:#34d399; box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.6);} 70%{box-shadow:0 0 0 8px rgba(52,211,153,0);} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0);} }
+
+    /* ===== Password gate ===== */
+    #auth-gate { position:fixed; inset:0; z-index:9999; background:var(--rs-navy); display:flex; align-items:center; justify-content:center; flex-direction:column; }
+    .auth-card { background:white; border-radius:20px; padding:48px 44px; width:100%; max-width:420px; box-shadow:0 24px 80px rgba(0,0,0,.35); text-align:center; }
+    .auth-logo { width:52px; height:52px; background:var(--rs-red); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 20px; }
+    .auth-title { font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--rs-navy); margin-bottom:6px; }
+    .auth-subtitle { font-size:13px; color:var(--n-600); margin-bottom:28px; line-height:1.5; }
+    .auth-label { display:block; text-align:left; font-size:12px; font-weight:600; color:var(--rs-navy-soft); letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
+    .auth-input { width:100%; padding:13px 16px; border:2px solid var(--n-200); border-radius:10px; font-family:'Inter',sans-serif; font-size:15px; color:var(--rs-navy); outline:none; transition:border-color .2s; letter-spacing:.12em; }
+    .auth-input:focus { border-color:var(--rs-red); }
+    .auth-input.error { border-color:var(--rs-red); background:var(--rs-red-50); }
+    .auth-btn { width:100%; margin-top:18px; padding:14px; background:var(--rs-red); color:white; border:none; border-radius:10px; cursor:pointer; font-family:'Inter',sans-serif; font-size:15px; font-weight:700; letter-spacing:.2px; transition:background .2s,transform .1s; }
+    .auth-btn:hover { background:var(--rs-red-dark); } .auth-btn:active { transform:scale(.98); }
+    .auth-error { margin-top:12px; font-size:13px; color:var(--rs-red-dark); font-weight:600; min-height:20px; }
+    .auth-footer { margin-top:24px; font-size:11.5px; color:rgba(255,255,255,.35); letter-spacing:.3px; }
+    .auth-footer strong { color:rgba(255,255,255,.6); }
+  </style>
+</head>
+<body>
+
+<!-- ===== PASSWORD GATE ===== -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo">🌾</div>
+    <div class="auth-title">Land Survey Baseline Dashboard</div>
+    <div class="auth-subtitle">This dashboard contains confidential field-monitoring data.<br>Please enter the access password to continue.</div>
+    <label class="auth-label" for="auth-pw">Access Password</label>
+    <input id="auth-pw" class="auth-input" type="password" placeholder="Enter password"
+           onkeydown="if(event.key==='Enter') checkAuth()" autocomplete="current-password" />
+    <button class="auth-btn" onclick="checkAuth()">Access Dashboard →</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+  <div class="auth-footer"><strong>Research Solutions</strong> &nbsp;·&nbsp; Confidential Field Data &nbsp;·&nbsp; landsurvey.rs.org.pk</div>
+</div>
+
+<div id="site-content" style="display:none">
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div class="header-logo-wrap">
+        <img src="https://www.rs.org.pk/wp-content/uploads/2021/05/RS-Logo-White.png" alt="Research Solutions"
+             onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex';" />
+        <div id="logo-fallback" style="display:none; align-items:center; gap:10px;">
+          <div style="width:40px;height:40px;background:var(--rs-red);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">🔍</div>
+          <div>
+            <div style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-.3px;">Research Solutions</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.8px;text-transform:uppercase;">M&amp;A Research Solutions LLC</div>
+          </div>
+        </div>
+      </div>
+      <div class="header-study">
+        <div class="header-study-title">Land Survey Baseline — Sargodha District</div>
+        <div class="header-study-sub">Women's Land Rights · Inheritance · Household Decision-Making · Field Monitoring</div>
+      </div>
+      <div class="header-meta">
+        <strong>Pakistan · Sargodha District</strong><br>
+        <span id="meta-line">Baseline Field Collection</span><br>
+        <span class="header-pill" id="meta-pill">Live Tracker</span>
+      </div>
+    </div>
+    <nav class="nav-tabs" id="navTabs">
+      <button class="nav-tab active" onclick="showPanel('overview',this)">📊 Overview</button>
+      <button class="nav-tab" onclick="showPanel('profile',this)">👩 Respondent Profile</button>
+      <button class="nav-tab" onclick="showPanel('land',this)">🌾 Land &amp; Inheritance</button>
+      <button class="nav-tab" onclick="showPanel('empower',this)">⚖️ Empowerment</button>
+      <button class="nav-tab" onclick="showPanel('field',this)">🛠️ Fieldwork &amp; Quality</button>
+      <button class="nav-tab" onclick="showPanel('mouza',this)">🗺️ Mouza Completion</button>
+    </nav>
+  </div>
+</div>
+
+<div class="live-banner">
+  <span class="live-dot"></span>
+  <span class="live-pill">Live Data</span>
+  <span>This dashboard reflects <strong style="color:#fff;">real baseline field data</strong> and refreshes daily. Last updated <strong id="banner-updated" style="color:#fff;">—</strong>.</span>
+  <span class="live-pill" id="banner-pill">Daily Refresh</span>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+
+  <!-- OVERVIEW -->
+  <div class="panel active" id="panel-overview">
+    <div class="section-header">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Survey at a Glance</h2>
+        <p>Real-time monitoring of the Land Survey Baseline across Sargodha District. The study documents women's land ownership, inheritance, co-ownership, and household decision-making — tracking field progress against the sampling targets for every mouza, split by urban and rural respondents.</p>
+      </div>
+    </div>
+    <div class="kpi-grid" id="ov-kpis"></div>
+    <div class="callout-row" id="ov-callouts"></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card full">
+        <h3>Daily Completed Interviews</h3>
+        <div class="chart-desc">Number of completed interviews submitted per field day</div>
+        <div class="chart-wrap"><canvas id="chartDaily"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid cols-3">
+      <div class="chart-card">
+        <h3>Overall Progress vs Target</h3>
+        <div class="chart-desc">Completed interviews against the district-wide sampling target</div>
+        <div class="chart-wrap"><canvas id="chartProgress"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Urban vs Rural Completed</h3>
+        <div class="chart-desc">Completed interviews by settlement type</div>
+        <div class="chart-wrap"><canvas id="chartUrbanRural"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Interviews by Tehsil</h3>
+        <div class="chart-desc">Completed interviews across tehsils sampled so far</div>
+        <div class="chart-wrap"><canvas id="chartTehsil"></canvas></div>
+      </div>
+    </div>
+    <p class="footnote">Targets sourced from the district sampling frame (296 mouzas). Urban / rural classification derived from the PULSE sampling tracker (city vs village). Data collected via SurveyCTO digital CAPI. Study design &amp; analysis by Research Solutions (M&amp;A Research Solutions LLC) | www.rs.org.pk</p>
+  </div>
+
+  <!-- RESPONDENT PROFILE -->
+  <div class="panel" id="panel-profile">
+    <div class="section-header">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Respondent Profile</h2>
+        <p>Who is being interviewed? Respondent type, marital status, and access to communication technology among completed interviews.</p>
+      </div>
+    </div>
+    <div class="kpi-grid" id="pr-kpis"></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Respondent Type</h3><div class="chart-desc">Relationship of respondent to the landholding</div><div class="chart-wrap"><canvas id="chartRespType"></canvas></div></div>
+      <div class="chart-card"><h3>Marital Status</h3><div class="chart-desc">Marital status of respondents</div><div class="chart-wrap"><canvas id="chartMarital"></canvas></div></div>
+    </div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Smartphone Access</h3><div class="chart-desc">Whether the respondent owns a smartphone</div><div class="chart-wrap"><canvas id="chartPhone"></canvas></div></div>
+      <div class="chart-card"><h3>Household Decision-Maker — Major Spending</h3><div class="chart-desc">Who decides on major household expenditure</div><div class="chart-wrap tall"><canvas id="chartDecMoney"></canvas></div></div>
+    </div>
+    <p class="footnote">Based on completed interviews only. The survey predominantly targets women (wives) as the primary respondents on land-rights questions.</p>
+  </div>
+
+  <!-- LAND & INHERITANCE -->
+  <div class="panel" id="panel-land">
+    <div class="section-header">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Land Ownership &amp; Inheritance</h2>
+        <p>The core land-rights indicators: whether the family owned agricultural land, whether the father has passed away, whether the respondent inherited the land, and whether she co-owns it.</p>
+      </div>
+    </div>
+    <div class="kpi-grid" id="la-kpis"></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Family Owned Agricultural Land</h3><div class="chart-desc">Did the father/in-law own more than 1 marla of agricultural land?</div><div class="chart-wrap"><canvas id="chartLandName"></canvas></div></div>
+      <div class="chart-card"><h3>Father / In-law Passed Away</h3><div class="chart-desc">Whether the landholder has passed away</div><div class="chart-wrap"><canvas id="chartFatherDied"></canvas></div></div>
+    </div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Inherited the Land</h3><div class="chart-desc">Whether the respondent inherited the land that belonged to the father/in-law</div><div class="chart-wrap"><canvas id="chartInherit"></canvas></div></div>
+      <div class="chart-card"><h3>Co-owns the Land</h3><div class="chart-desc">Whether the respondent co-owns this land</div><div class="chart-wrap"><canvas id="chartCoOwn"></canvas></div></div>
+    </div>
+    <p class="footnote">Codes: 1 = Yes, 2 = No, 666 = Refuse to answer, 999 = Don't know. Indicators measured among completed interviews.</p>
+  </div>
+
+  <!-- EMPOWERMENT -->
+  <div class="panel" id="panel-empower">
+    <div class="section-header">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Household Decision-Making &amp; Mobility</h2>
+        <p>Women's agency within the household: who makes financial decisions, how often women travel outside the village alone, and the quality of their relationship with the male head of household.</p>
+      </div>
+    </div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Everyday Purchase Decisions</h3><div class="chart-desc">Who usually decides on everyday household purchases</div><div class="chart-wrap tall"><canvas id="chartDecDaily"></canvas></div></div>
+      <div class="chart-card"><h3>Saving Decisions</h3><div class="chart-desc">Who decides how the household saves</div><div class="chart-wrap tall"><canvas id="chartDecSave"></canvas></div></div>
+    </div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Mobility — Days Outside Village Alone (Past Week)</h3><div class="chart-desc">Number of days the respondent went outside the village alone in the past week</div><div class="chart-wrap"><canvas id="chartMobility"></canvas></div></div>
+      <div class="chart-card"><h3>Relationship with Male Head — Mean Scores</h3><div class="chart-desc">Quality of relationship with male head of household (1 = Never, 4 = Always)</div><div class="chart-wrap"><canvas id="chartRel"></canvas></div></div>
+    </div>
+    <p class="footnote">Decision-making categories follow the household roster scale. Relationship items rated 1 = Never, 2 = Sometimes, 3 = Often, 4 = Always; higher is better.</p>
+  </div>
+
+  <!-- FIELDWORK & QUALITY -->
+  <div class="panel" id="panel-field">
+    <div class="section-header">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Fieldwork &amp; Data Quality</h2>
+        <p>Enumerator productivity, interview duration, and the consent funnel — operational indicators for monitoring field performance and data quality.</p>
+      </div>
+    </div>
+    <div class="kpi-grid" id="fl-kpis"></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card full"><h3>Enumerator Productivity</h3><div class="chart-desc">Completed interviews per enumerator</div><div class="chart-wrap tall"><canvas id="chartEnum"></canvas></div></div>
+    </div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Interview Duration</h3><div class="chart-desc">Distribution of completed-interview length (minutes)</div><div class="chart-wrap"><canvas id="chartDuration"></canvas></div></div>
+      <div class="chart-card"><h3>Consent &amp; Completion Funnel</h3><div class="chart-desc">From total submissions to completed interviews</div><div class="chart-wrap"><canvas id="chartFunnel"></canvas></div></div>
+    </div>
+    <p class="footnote">Duration computed from interview start and end timestamps. The consent funnel tracks attrition from first contact through to a completed interview.</p>
+  </div>
+
+  <!-- MOUZA COMPLETION -->
+  <div class="panel" id="panel-mouza">
+    <div class="section-header">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Mouza Completion Tracker</h2>
+        <p>Live completion status for every mouza in the sampling frame — completed interviews against target, split into urban and rural. Search by mouza or tehsil, filter by status, and click any column to sort.</p>
+      </div>
+    </div>
+    <div class="kpi-grid" id="mz-kpis"></div>
+    <div class="mz-toolbar">
+      <input type="text" id="mz-search" class="mz-search" placeholder="🔍  Search mouza or tehsil…" oninput="renderMouzaTable()">
+      <select id="mz-status" class="mz-filter" onchange="renderMouzaTable()">
+        <option value="all">All statuses</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+        <option value="Not Started">Not Started</option>
+      </select>
+      <select id="mz-tehsil" class="mz-filter" onchange="renderMouzaTable()"></select>
+      <span class="mz-count" id="mz-count"></span>
+    </div>
+    <div class="mz-table-wrap">
+      <table class="mz-table" id="mz-table">
+        <thead>
+          <tr>
+            <th data-sort="mauza">Mouza <span class="arrow"></span></th>
+            <th data-sort="tehsil">Tehsil <span class="arrow"></span></th>
+            <th class="num" data-sort="urban_done">Urban Completed <span class="arrow"></span></th>
+            <th class="num" data-sort="rural_done">Rural Completed <span class="arrow"></span></th>
+            <th class="num" data-sort="total_done">Total Completed <span class="arrow"></span></th>
+            <th data-sort="pct">Completion <span class="arrow">▼</span></th>
+            <th data-sort="status">Status <span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="mz-body"></tbody>
+      </table>
+    </div>
+    <p class="footnote">Urban = respondents tracked in the city; Rural = respondents tracked in the village (per the PULSE sampling tracker). Completion % = total completed ÷ mouza target. Sorted by completion by default.</p>
+  </div>
+
+</div><!-- /main -->
+
+<div class="page-footer">
+  <strong>Land Survey Baseline Dashboard</strong> &nbsp;·&nbsp;
+  Research Solutions (M&amp;A Research Solutions LLC) &nbsp;·&nbsp;
+  <strong>landsurvey.rs.org.pk</strong> &nbsp;·&nbsp;
+  Sargodha District, Pakistan &nbsp;·&nbsp; <span id="footer-updated">—</span>
+</div>
+</div><!-- /site-content -->
+
+<script>
+// ============================================================
+//  DATA  (injected by build_dashboard.py)
+// ============================================================
+const DASHBOARD_DATA = {"meta": {"last_updated": "08 Jun 2026, 01:50 PM", "last_date": "2026-06-08", "n_complete": 76, "n_submissions": 83, "total_target": 2937, "urban_target": 889, "rural_target": 2048, "urban_done": 10, "rural_done": 66, "n_target_mauzas": 296, "n_tehsils": 6, "mauzas_started": 18, "mauzas_completed": 0, "consent_rate": 91.6, "field_days": 2, "avg_duration": 54.0, "pct_complete": 2.6}, "daily": [{"date": "2026-06-07", "count": 81}, {"date": "2026-06-08", "count": 2}], "tehsil_split": [{"label": "SARGODHA", "value": 74}, {"label": "", "value": 2}], "resp_type": [{"label": "Wife", "value": 75}, {"label": "Husband", "value": 1}], "marital": [{"label": "Currently Married", "value": 57}, {"label": "Widow/ Widower", "value": 16}, {"label": "Separated", "value": 2}, {"label": "Divorced", "value": 1}], "smartphone": [{"label": "No", "value": 51}, {"label": "Yes", "value": 25}], "land_in_name": [{"label": "Yes", "value": 76}], "father_died": [{"label": "Yes", "value": 76}], "inherit_land": [{"label": "Yes", "value": 76}], "co_own_land": [{"label": "Yes", "value": 76}], "decision_money": [{"label": "My spouse (alone)", "value": 24}, {"label": "My spouse and I decide together", "value": 21}, {"label": "My son(alone)", "value": 8}, {"label": "My son and I decide together", "value": 8}, {"label": "Me (alone)", "value": 7}, {"label": "Some other combination of family members decide (specify________)", "value": 6}, {"label": "No response", "value": 1}, {"label": "My sister(alone)", "value": 1}], "decision_daily": [{"label": "Me (alone)", "value": 23}, {"label": "My spouse (alone)", "value": 21}, {"label": "My spouse and I decide together", "value": 18}, {"label": "Some other combination of family members decide (specify________)", "value": 5}, {"label": "My son and I decide together", "value": 4}, {"label": "My son(alone)", "value": 4}, {"label": "No response", "value": 1}], "decision_save": [{"label": "Me (alone)", "value": 26}, {"label": "My spouse (alone)", "value": 18}, {"label": "My spouse and I decide together", "value": 17}, {"label": "My son(alone)", "value": 6}, {"label": "My son and I decide together", "value": 5}, {"label": "Some other combination of family members decide (specify________)", "value": 2}, {"label": "No response", "value": 1}, {"label": "My sister(alone)", "value": 1}], "mobility": [{"label": "0 days", "value": 27}, {"label": "1–2 days", "value": 30}, {"label": "3–4 days", "value": 11}, {"label": "5+ days", "value": 7}], "relationship": {"Shows interest in me": 3.27, "Respects me": 3.52, "I can share problems": 3.39}, "enumerators": [{"label": "Qurat Ul Ain", "value": 8}, {"label": "Nazia Mehmood", "value": 6}, {"label": "Mahreen Yaqoob", "value": 6}, {"label": "Kalsoom Bivi", "value": 6}, {"label": "Maria Arshad", "value": 5}, {"label": "Saman Shafqat", "value": 5}, {"label": "Saira Bibi", "value": 5}, {"label": "Muqadass Tahira", "value": 5}, {"label": "Nusrat Ismail", "value": 5}, {"label": "Naheed Talib", "value": 5}, {"label": "Muntaha Ijaz", "value": 4}, {"label": "Sajida Parveen", "value": 4}, {"label": "Sumera Sher", "value": 4}, {"label": "Parveen Batool", "value": 4}, {"label": "Atifa Ijaz", "value": 4}], "duration_bins": [{"label": "<30 min", "value": 2}, {"label": "30–45", "value": 10}, {"label": "45–60", "value": 38}, {"label": "60–75", "value": 12}, {"label": "75+ min", "value": 14}], "consent_funnel": [{"label": "Submissions", "value": 83}, {"label": "Intro consent", "value": 80}, {"label": "Consented", "value": 76}, {"label": "Completed", "value": 76}], "mouza_table": [{"mauza": "CHAKNO91ALIFJANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 9, "rural_target": 9, "total_done": 9, "total_target": 10, "pct": 90.0, "status": "In Progress"}, {"mauza": "CHAKNO25JANUBI", "tehsil": "SARGODHA", "urban_done": 1, "urban_target": 4, "rural_done": 7, "rural_target": 6, "total_done": 8, "total_target": 10, "pct": 80.0, "status": "In Progress"}, {"mauza": "CHAKNO23JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 7, "rural_target": 9, "total_done": 7, "total_target": 10, "pct": 70.0, "status": "In Progress"}, {"mauza": "CHAKNO23ALIFJANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 7, "rural_target": 9, "total_done": 7, "total_target": 11, "pct": 63.6, "status": "In Progress"}, {"mauza": "CHAKNO72JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 5, "rural_target": 5, "total_done": 5, "total_target": 10, "pct": 50.0, "status": "In Progress"}, {"mauza": "CHAKNO72ALIFJANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 5, "rural_target": 5, "total_done": 5, "total_target": 10, "pct": 50.0, "status": "In Progress"}, {"mauza": "CHAKNO91JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 5, "rural_target": 5, "total_done": 5, "total_target": 11, "pct": 45.5, "status": "In Progress"}, {"mauza": "CHAKNO68JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 5, "rural_target": 5, "total_done": 5, "total_target": 11, "pct": 45.5, "status": "In Progress"}, {"mauza": "CHAKNO80JANUBI", "tehsil": "SARGODHA", "urban_done": 2, "urban_target": 6, "rural_done": 3, "rural_target": 5, "total_done": 5, "total_target": 11, "pct": 45.5, "status": "In Progress"}, {"mauza": "CHAKNO84JANUBI", "tehsil": "SARGODHA", "urban_done": 1, "urban_target": 4, "rural_done": 3, "rural_target": 6, "total_done": 4, "total_target": 10, "pct": 40.0, "status": "In Progress"}, {"mauza": "CHAKNO24JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 3, "rural_target": 3, "total_done": 3, "total_target": 4, "pct": 75.0, "status": "In Progress"}, {"mauza": "CHAKNO69JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 3, "rural_target": 5, "total_done": 3, "total_target": 10, "pct": 30.0, "status": "In Progress"}, {"mauza": "CHAKNO102JANUBI", "tehsil": "SARGODHA", "urban_done": 2, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 2, "total_target": 10, "pct": 20.0, "status": "In Progress"}, {"mauza": "CHAKNO87JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 2, "rural_target": 4, "total_done": 2, "total_target": 10, "pct": 20.0, "status": "In Progress"}, {"mauza": "CHAKNO82SHUMALI", "tehsil": "SARGODHA", "urban_done": 1, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 1, "total_target": 10, "pct": 10.0, "status": "In Progress"}, {"mauza": "CHAKNO26JANUBI", "tehsil": "SARGODHA", "urban_done": 1, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 1, "total_target": 10, "pct": 10.0, "status": "In Progress"}, {"mauza": "CHAKNO104JANUBI", "tehsil": "SARGODHA", "urban_done": 1, "urban_target": 5, "rural_done": 0, "rural_target": 6, "total_done": 1, "total_target": 11, "pct": 9.1, "status": "In Progress"}, {"mauza": "CHAKNO102SHUMALI", "tehsil": "SARGODHA", "urban_done": 1, "urban_target": 2, "rural_done": 0, "rural_target": 9, "total_done": 1, "total_target": 11, "pct": 9.1, "status": "In Progress"}, {"mauza": "CHAKNO7SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO16SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO13JANUBI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO8ALIFJANUBI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO11ML", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO22SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO23SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO13SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO1JANUBI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO18SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO1SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO9ML", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO10SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 8, "rural_done": 0, "rural_target": 2, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO3SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO7JANUBI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO2SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO6ML", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DHORI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO9SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO11SHUMALI", "tehsil": "BHALWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "GULABPURAH", "tehsil": "BHERA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 2, "total_done": 0, "total_target": 4, "pct": 0.0, "status": "Not Started"}, {"mauza": "KHAWAJASALAH", "tehsil": "BHERA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKSAIDA", "tehsil": "BHERA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKMUBARAK", "tehsil": "BHERA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "PINDRAHEEMSHAH", "tehsil": "BHERA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BHOJIKOT", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKTARASINGH", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "NOORPURNOON", "tehsil": "BHERA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "ABBASPUR", "tehsil": "BHERA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DHAL", "tehsil": "BHERA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "RAKHCHARAGAH", "tehsil": "BHERA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 12, "total_done": 0, "total_target": 18, "pct": 0.0, "status": "Not Started"}, {"mauza": "BEERBARAN", "tehsil": "BHERA", "urban_done": 0, "urban_target": 9, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 18, "pct": 0.0, "status": "Not Started"}, {"mauza": "ALIPUR", "tehsil": "BHERA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "JEEVANWAL", "tehsil": "BHERA", "urban_done": 0, "urban_target": 7, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "AMRAA", "tehsil": "BHERA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "TATARI", "tehsil": "BHERA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHHANT", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "PINDIKOT", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "MADHPARGANAMIANI", "tehsil": "BHERA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKMISRAN", "tehsil": "BHERA", "urban_done": 0, "urban_target": 7, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "AMEERCHANDWALA", "tehsil": "BHERA", "urban_done": 0, "urban_target": 7, "rural_done": 0, "rural_target": 1, "total_done": 0, "total_target": 8, "pct": 0.0, "status": "Not Started"}, {"mauza": "TARTIPUR", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "TEHI", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "OTMANSAIDPUR", "tehsil": "BHERA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOTMAMYANA", "tehsil": "BHERA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DAVISPUR", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOTHAKIMKHAN", "tehsil": "BHERA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "GONDPUR", "tehsil": "BHERA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KHANMUHAMMADWALA", "tehsil": "BHERA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "JAHANIWALA", "tehsil": "BHERA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "JAGATPURAH", "tehsil": "BHERA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 8, "pct": 0.0, "status": "Not Started"}, {"mauza": "MALKOPUR", "tehsil": "BHERA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "WAZIDI", "tehsil": "BHERA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "REHANWALA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO8JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 7, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOTKALA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "THATHIBERYAN", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "AHMADIWALA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "GHAUSMUHAMMADWALA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "RAMREHAN", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "HAYATPUR", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO18JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KHUNBNO", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAWAWAL", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "ABOL", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "MELA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BURKAN", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "TARDIANWALA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "TAKHTHAZARA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO66JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DHANGRANWALI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "MOHRIWALA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "OPI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "RAWANA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOTLAPANAH", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "SAIDNO", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "NASEERPURKHURD", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BADEEN", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO21JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BADR", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "NASEERPURKALAN", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO67JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOTGHAZIKHURD", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DEODHI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KHUNBKAHNA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "NAWANKOT", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "RAHEEMPUR", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 12, "pct": 0.0, "status": "Not Started"}, {"mauza": "BURJGHULAMRASOOL", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO19JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "MAIDAY", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "MURADWALA", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "WAN", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO11JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO10JANUBI", "tehsil": "KOTMOMIN", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "JHEERVIRAN", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DEENPURJANOBI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "SIALDHOOLKA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "JAMIATPUR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KAMALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "THATHIJALAL", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "PANJPEER", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "JARRA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOTLAWATANI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 4, "pct": 0.0, "status": "Not Started"}, {"mauza": "NOORPURKHOKHARAN", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "AHIRSARAKHROO", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "RABANAH", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "GULBANA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KAKKRANI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DEENAR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DHERUWAL", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHOHAL", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BHOOCHARANO", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "SAHIBA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DHOOLBALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "ARRAR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHEHTROOR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHOIKA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "JAHANIYANSHAH", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DHOOLKADHI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "JALLABALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BADARBHON", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "WAJHOKA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "MANGLA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "THATHIYAROOJAGIR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KHUSHKAN", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "PINDIWALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "MUHAMMADALIWALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "TARKHANWALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "AAKI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 6, "pct": 0.0, "status": "Not Started"}, {"mauza": "SHEIKHJALEEL", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "GHAZNI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DILAWAR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BAGGE", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "SILKI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "KAILAJAGIR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "ASALATWALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "AHLIKAMBOH", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DHERUSIAL", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOTCHOGHTA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "SHEIKH", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "MEHTA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "GHAZIABAD", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "THATHISYEDSHAMIR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BOHLARIWALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "ABUWALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "HINDWAN", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DERA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "DUWANABALOCHAN", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "SIKANDERPUR", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "THATHILAMBI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "WAJH", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "WALA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "DARA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "POHLA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "MANGOWALI", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "BORA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "MEERAHMEDSHERGARH", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "RAKHSAHIWAL", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "SANGORAKA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "SAJOKA", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "LAKHIWAL", "tehsil": "SAHIWAL", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO88SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO31JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO75SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO109SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO187SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 5, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKJODH", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO104SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO79SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO19SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO71JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "MANGNI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO54SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO54JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO58JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 7, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO33JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO95SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO96SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "BONGA", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO27SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO39JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO36JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO31SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO78SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO116JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 6, "pct": 0.0, "status": "Not Started"}, {"mauza": "BEHAK", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO93JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO105SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO94SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO52ALIFSHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO100SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO75JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO111JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO46JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO34SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO87SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO5RAKHDHAREEMA", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO51SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO96JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 7, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO94JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 7, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO55JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 7, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO142JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "LALUWALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO91SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO58SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "KOLOWAL", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO100JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 7, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO59SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 7, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO17JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 11, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO33SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO93SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO44JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO1RAKHDHAREEMA", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 11, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO86JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO97JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO37JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO45JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 8, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO106JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "UTIYAN", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO98SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO86SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO28JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO189SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO190SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO39SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 2, "total_done": 0, "total_target": 4, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO110JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO89SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO92JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 5, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO42JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO35SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO34JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO109JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "HADDA", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO36SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO53SHUMALI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO95JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO89JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO99JANUBI", "tehsil": "SARGODHA", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO147/148SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO131JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 8, "rural_done": 0, "rural_target": 2, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO131SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO120JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO125SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO114SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO136JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO142SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO124JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO49JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO125JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO123SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO132SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO137JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 8, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO118SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO160SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO140SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO107SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO129SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO173SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 8, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO111SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 7, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO161SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO162/164SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO163SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO157SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO152SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 1, "rural_done": 0, "rural_target": 9, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO116SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 7, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO117SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 3, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 9, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO135SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 2, "rural_done": 0, "rural_target": 8, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO170/172SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO151SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 0, "rural_done": 0, "rural_target": 10, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO122SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO139SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 6, "rural_done": 0, "rural_target": 4, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO153SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 7, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO63JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO134JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 4, "rural_done": 0, "rural_target": 6, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO64JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO137/138SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO121JANUBI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 5, "rural_done": 0, "rural_target": 5, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}, {"mauza": "CHAKNO159SHUMALI", "tehsil": "SILLANWALI", "urban_done": 0, "urban_target": 7, "rural_done": 0, "rural_target": 3, "total_done": 0, "total_target": 10, "pct": 0.0, "status": "Not Started"}]};
+
+// ============================================================
+//  PASSWORD GATE
+// ============================================================
+function checkAuth() {
+  var pw = document.getElementById('auth-pw').value;
+  var err = document.getElementById('auth-error');
+  if (pw === 'PULSE@2026') {
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('site-content').style.display = 'block';
+    err.textContent = '';
+    if (!window.__rendered) { renderAll(); window.__rendered = true; }
+  } else {
+    err.textContent = 'Incorrect password. Please try again.';
+    document.getElementById('auth-pw').value = '';
+    document.getElementById('auth-pw').focus();
+  }
+}
+
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+//  CHART SETUP
+// ============================================================
+Chart.register(ChartDataLabels);
+const RED='#E8192C', NAVY='#2D3450', TEAL='#0891B2', AMBER='#F59E0B', PURPLE='#8B5CF6', GREEN='#16A34A';
+const PALETTE=[NAVY, RED, TEAL, AMBER, PURPLE, GREEN, '#6B7494', '#F47885'];
+const GRID='#f1f5f9';
+const FONT={family:'Inter'};
+
+function baseOpts(extra){
+  return Object.assign({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{labels:{font:FONT, color:'#334155', boxWidth:14}}, datalabels:{display:false} }
+  }, extra||{});
+}
+const L = a => a.map(x=>x.label);
+const V = a => a.map(x=>x.value);
+
+function barChart(id, arr, color, horizontal){
+  const el=document.getElementById(id); if(!el) return;
+  new Chart(el,{type:'bar', data:{labels:L(arr), datasets:[{data:V(arr), backgroundColor:color, borderRadius:6, maxBarThickness:46}]},
+    options:baseOpts({ indexAxis: horizontal?'y':'x',
+      plugins:{legend:{display:false}, datalabels:{display:true, anchor:horizontal?'end':'end', align:horizontal?'right':'top', color:'#475569', font:{family:'Inter',size:11,weight:'600'}, formatter:v=>v||''}},
+      scales:{ x:{ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{display:!horizontal,color:GRID}},
+               y:{ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{display:horizontal?false:true,color:GRID},beginAtZero:true}} }) });
+}
+
+function donutChart(id, arr, colors){
+  const el=document.getElementById(id); if(!el) return;
+  new Chart(el,{type:'doughnut', data:{labels:L(arr), datasets:[{data:V(arr), backgroundColor:colors||PALETTE, borderWidth:2, borderColor:'#fff'}]},
+    options:baseOpts({ cutout:'58%', plugins:{ legend:{position:'right',labels:{font:FONT,color:'#334155',boxWidth:12,padding:10}},
+      datalabels:{display:true,color:'#fff',font:{family:'Inter',size:12,weight:'700'},formatter:(v,c)=>{const t=c.dataset.data.reduce((a,b)=>a+b,0);return v? Math.round(100*v/t)+'%':'';}} } }) });
+}
+
+// ============================================================
+//  KPI BUILDER
+// ============================================================
+function kpi(icon,value,label,delta,deltaClass,cardClass){
+  return `<div class="kpi-card ${cardClass||''}"><div class="kpi-icon">${icon}</div>
+    <div class="kpi-value">${value}</div><div class="kpi-label">${label}</div>
+    ${delta?`<div class="kpi-delta ${deltaClass||'navy'}">${delta}</div>`:''}</div>`;
+}
+function callout(cls,icon,h,p){ return `<div class="callout ${cls}"><div class="callout-icon">${icon}</div><div class="callout-body"><h4>${h}</h4><p>${p}</p></div></div>`; }
+
+// ============================================================
+//  RENDER
+// ============================================================
+function renderAll(){
+  const D = DASHBOARD_DATA, m = D.meta;
+
+  document.getElementById('banner-updated').textContent = m.last_updated;
+  document.getElementById('footer-updated').textContent = 'Updated ' + m.last_updated;
+  document.getElementById('meta-line').textContent = m.field_days + ' field days · last ' + (m.last_date||'');
+  document.getElementById('meta-pill').textContent = m.n_complete + ' Completed';
+  document.getElementById('banner-pill').textContent = m.pct_complete + '% of target';
+
+  // ---- Overview KPIs ----
+  document.getElementById('ov-kpis').innerHTML =
+    kpi('✅', m.n_complete.toLocaleString(), 'Completed Interviews', m.pct_complete+'% of '+m.total_target.toLocaleString()+' target', 'up', 'green') +
+    kpi('🎯', m.total_target.toLocaleString(), 'District Target', m.urban_target+' urban · '+m.rural_target+' rural', 'navy', 'navy') +
+    kpi('🏙️', m.urban_done.toLocaleString(), 'Urban Completed', 'Target '+m.urban_target.toLocaleString(), 'teal', 'teal') +
+    kpi('🌾', m.rural_done.toLocaleString(), 'Rural Completed', 'Target '+m.rural_target.toLocaleString(), 'up', 'amber') +
+    kpi('🗺️', m.mauzas_started+' / '+m.n_target_mauzas, 'Mouzas Started', m.mauzas_completed+' fully completed', 'navy', 'purple') +
+    kpi('🤝', m.consent_rate+'%', 'Consent Rate', m.field_days+' field days', 'up');
+
+  document.getElementById('ov-callouts').innerHTML =
+    callout('teal','🏙️','Urban Coverage', m.urban_done+' of '+m.urban_target+' urban interviews complete ('+pctOf(m.urban_done,m.urban_target)+'%).') +
+    callout('amber','🌾','Rural Coverage', m.rural_done+' of '+m.rural_target+' rural interviews complete ('+pctOf(m.rural_done,m.rural_target)+'%).') +
+    callout('primary','🗺️','Mouza Reach', m.mauzas_started+' of '+m.n_target_mauzas+' sampled mouzas have at least one completed interview.') +
+    callout('navy','⏱️','Pace', 'Median interview takes '+m.avg_duration+' minutes across '+m.field_days+' field days.');
+
+  // Overview charts
+  lineChart('chartDaily', D.daily);
+  progressDonut('chartProgress', m.n_complete, m.total_target);
+  donutChart('chartUrbanRural', [{label:'Urban',value:m.urban_done},{label:'Rural',value:m.rural_done}], [TEAL, AMBER]);
+  barChart('chartTehsil', D.tehsil_split, NAVY, false);
+
+  // ---- Respondent profile ----
+  const rt = D.resp_type, ms = D.marital;
+  document.getElementById('pr-kpis').innerHTML =
+    kpi('👩', topShare(rt), 'Most Common Respondent', topLabel(rt), 'navy', 'navy') +
+    kpi('💍', topShare(ms), 'Most Common Marital Status', topLabel(ms), 'navy', 'teal') +
+    kpi('📱', pctYes(D.smartphone)+'%', 'Own a Smartphone', 'Of completed interviews', 'up', 'amber') +
+    kpi('🧮', D.meta.n_complete, 'Profiles Captured', 'Completed interviews', 'navy', 'purple');
+  donutChart('chartRespType', rt, [NAVY, RED, TEAL]);
+  barChart('chartMarital', ms, TEAL, true);
+  donutChart('chartPhone', D.smartphone, [GREEN, '#cbd5e1', '#94a3b8']);
+  barChart('chartDecMoney', D.decision_money, NAVY, true);
+
+  // ---- Land & inheritance ----
+  document.getElementById('la-kpis').innerHTML =
+    kpi('🌾', pctYes(D.land_in_name)+'%', 'Family Owned Land', '> 1 marla agricultural land', 'up', 'green') +
+    kpi('🕯️', pctYes(D.father_died)+'%', 'Landholder Passed Away', 'Father / in-law deceased', 'navy', 'navy') +
+    kpi('📜', pctYes(D.inherit_land)+'%', 'Inherited the Land', 'Respondent inherited land', 'up', 'teal') +
+    kpi('🤝', pctYes(D.co_own_land)+'%', 'Co-owns the Land', 'Respondent co-owns land', 'up', 'amber');
+  donutChart('chartLandName', D.land_in_name, [GREEN, RED, '#94a3b8', '#cbd5e1']);
+  donutChart('chartFatherDied', D.father_died, [NAVY, TEAL, '#94a3b8']);
+  donutChart('chartInherit', D.inherit_land, [TEAL, RED, '#94a3b8']);
+  donutChart('chartCoOwn', D.co_own_land, [AMBER, RED, '#94a3b8']);
+
+  // ---- Empowerment ----
+  barChart('chartDecDaily', D.decision_daily, TEAL, true);
+  barChart('chartDecSave', D.decision_save, PURPLE, true);
+  barChart('chartMobility', D.mobility, AMBER, false);
+  const rel = Object.keys(D.relationship).map(k=>({label:k, value:D.relationship[k]}));
+  const relEl=document.getElementById('chartRel');
+  if(relEl) new Chart(relEl,{type:'bar', data:{labels:L(rel), datasets:[{data:V(rel), backgroundColor:NAVY, borderRadius:6, maxBarThickness:60}]},
+    options:baseOpts({plugins:{legend:{display:false}, datalabels:{display:true,anchor:'end',align:'top',color:'#475569',font:{family:'Inter',size:12,weight:'700'}}},
+      scales:{x:{ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{display:false}},y:{min:0,max:4,ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{color:GRID}}}})});
+
+  // ---- Fieldwork ----
+  document.getElementById('fl-kpis').innerHTML =
+    kpi('🧑‍💼', D.enumerators.length, 'Active Enumerators', 'Submitting completed interviews', 'navy', 'navy') +
+    kpi('⏱️', m.avg_duration+' min', 'Median Interview Length', 'Per completed interview', 'navy', 'teal') +
+    kpi('🤝', m.consent_rate+'%', 'Consent Rate', m.n_submissions+' total submissions', 'up', 'green') +
+    kpi('📅', m.field_days, 'Field Days', 'Active collection days', 'navy', 'amber');
+  barChart('chartEnum', D.enumerators, NAVY, true);
+  barChart('chartDuration', D.duration_bins, TEAL, false);
+  barChart('chartFunnel', D.consent_funnel, RED, true);
+
+  // ---- Mouza ----
+  buildMouzaPanel();
+}
+
+function pctOf(a,b){ return b? Math.round(100*a/b):0; }
+function lineChart(id, arr){
+  const el=document.getElementById(id); if(!el) return;
+  new Chart(el,{type:'line', data:{labels:arr.map(x=>x.date), datasets:[{data:arr.map(x=>x.count), borderColor:RED, backgroundColor:'rgba(232,25,44,.10)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:RED, borderWidth:3}]},
+    options:baseOpts({plugins:{legend:{display:false}, datalabels:{display:true,anchor:'end',align:'top',color:NAVY,font:{family:'Inter',size:11,weight:'700'}}},
+      scales:{x:{ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{display:false}},y:{beginAtZero:true,ticks:{font:{family:'Inter',size:11},color:'#475569',precision:0},grid:{color:GRID}}}})});
+}
+function progressDonut(id, done, target){
+  const el=document.getElementById(id); if(!el) return;
+  const rem=Math.max(target-done,0);
+  new Chart(el,{type:'doughnut', data:{labels:['Completed','Remaining'], datasets:[{data:[done,rem], backgroundColor:[GREEN,'#e2e8f0'], borderWidth:0}]},
+    options:baseOpts({cutout:'72%', plugins:{legend:{position:'bottom',labels:{font:FONT,color:'#334155',boxWidth:12}},
+      datalabels:{display:false},
+      tooltip:{callbacks:{label:c=>c.label+': '+c.raw.toLocaleString()}}}}),
+    plugins:[{id:'center', afterDraw(c){const{ctx,chartArea}=c; ctx.save(); const x=(chartArea.left+chartArea.right)/2, y=(chartArea.top+chartArea.bottom)/2;
+      ctx.textAlign='center'; ctx.fillStyle=NAVY; ctx.font='800 26px Inter'; ctx.fillText(pctOf(done,target)+'%', x, y-2);
+      ctx.fillStyle='#94a3b8'; ctx.font='600 11px Inter'; ctx.fillText(done.toLocaleString()+' / '+target.toLocaleString(), x, y+18); ctx.restore();}}]});
+}
+function topLabel(arr){ const a=arr.filter(x=>x.label!=='No response'); return a.length?a[0].label:'—'; }
+function topShare(arr){ const tot=arr.reduce((s,x)=>s+x.value,0); const a=arr.filter(x=>x.label!=='No response'); return tot&&a.length? Math.round(100*a[0].value/tot)+'%':'—'; }
+function pctYes(arr){ const tot=arr.reduce((s,x)=>s+x.value,0); const y=arr.find(x=>x.label==='Yes'); return tot&&y? Math.round(100*y.value/tot):0; }
+
+// ============================================================
+//  MOUZA TABLE
+// ============================================================
+let mzSort = {key:'pct', dir:-1};
+function buildMouzaPanel(){
+  const D=DASHBOARD_DATA, m=D.meta;
+  document.getElementById('mz-kpis').innerHTML =
+    kpi('🎯', m.total_target.toLocaleString(), 'Total Target Interviews', m.n_target_mauzas+' mouzas · '+m.n_tehsils+' tehsils', 'navy', 'navy') +
+    kpi('✅', m.n_complete.toLocaleString(), 'Total Completed', m.pct_complete+'% of target', 'up', 'green') +
+    kpi('🏙️', m.urban_done+' / '+m.urban_target, 'Urban Completed', pctOf(m.urban_done,m.urban_target)+'% of urban target', 'teal', 'teal') +
+    kpi('🌾', m.rural_done+' / '+m.rural_target, 'Rural Completed', pctOf(m.rural_done,m.rural_target)+'% of rural target', 'up', 'amber');
+  // tehsil filter options
+  const tehsils=[...new Set(D.mouza_table.map(r=>r.tehsil))].sort();
+  const sel=document.getElementById('mz-tehsil');
+  sel.innerHTML='<option value="all">All tehsils</option>'+tehsils.map(t=>`<option value="${t}">${t}</option>`).join('');
+  // header sort handlers
+  document.querySelectorAll('#mz-table th').forEach(th=>{
+    th.onclick=()=>{ const k=th.dataset.sort; if(mzSort.key===k) mzSort.dir*=-1; else {mzSort.key=k; mzSort.dir=(k==='mauza'||k==='tehsil'||k==='status')?1:-1;} updateArrows(); renderMouzaTable(); };
+  });
+  updateArrows();
+  renderMouzaTable();
+}
+function updateArrows(){
+  document.querySelectorAll('#mz-table th').forEach(th=>{
+    const a=th.querySelector('.arrow');
+    a.textContent = (th.dataset.sort===mzSort.key) ? (mzSort.dir===1?'▲':'▼') : '';
+  });
+}
+function statusBadge(s){
+  if(s==='Completed') return '<span class="badge badge-green">✓ Completed</span>';
+  if(s==='In Progress') return '<span class="badge badge-amber">● In Progress</span>';
+  return '<span class="badge badge-grey">○ Not Started</span>';
+}
+function barColor(p){ return p>=100?GREEN : p>=50?AMBER : p>0?RED : '#cbd5e1'; }
+function renderMouzaTable(){
+  const D=DASHBOARD_DATA;
+  const q=(document.getElementById('mz-search').value||'').toUpperCase().replace(/\s/g,'');
+  const st=document.getElementById('mz-status').value;
+  const th=document.getElementById('mz-tehsil').value;
+  let rows=D.mouza_table.filter(r=>{
+    const hay=(r.mauza+r.tehsil).toUpperCase().replace(/\s/g,'');
+    if(q && !hay.includes(q)) return false;
+    if(st!=='all' && r.status!==st) return false;
+    if(th!=='all' && r.tehsil!==th) return false;
+    return true;
+  });
+  const k=mzSort.key, dir=mzSort.dir;
+  rows.sort((a,b)=>{ let x=a[k],y=b[k]; if(typeof x==='string'){return x.localeCompare(y)*dir;} return (x-y)*dir; });
+
+  const body=document.getElementById('mz-body');
+  body.innerHTML = rows.map(r=>{
+    const pct=Math.min(r.pct,100);
+    return `<tr>
+      <td><span class="mz-mauza">${r.mauza}</span></td>
+      <td><span class="mz-tehsil">${r.tehsil}</span></td>
+      <td class="num"><span class="mz-frac"><span class="done">${r.urban_done}</span><span class="sep"> / </span><span class="tgt">${r.urban_target}</span></span></td>
+      <td class="num"><span class="mz-frac"><span class="done">${r.rural_done}</span><span class="sep"> / </span><span class="tgt">${r.rural_target}</span></span></td>
+      <td class="num"><span class="mz-frac"><span class="done">${r.total_done}</span><span class="sep"> / </span><span class="tgt">${r.total_target}</span></span></td>
+      <td><span class="mz-bar"><span style="width:${pct}%;background:${barColor(r.pct)}"></span></span><span class="mz-pct" style="color:${barColor(r.pct)}">${r.pct}%</span></td>
+      <td>${statusBadge(r.status)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('mz-count').textContent = rows.length + ' of ' + D.mouza_table.length + ' mouzas';
+}
+</script>
+</body>
+</html>
