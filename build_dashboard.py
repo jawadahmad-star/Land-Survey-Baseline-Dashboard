@@ -158,10 +158,68 @@ def main():
     father_died  = vc(comp["father_died"],  lab("father_died"),  dropna=False)
     inherit_land = vc(comp["inherit_land"], lab("inherit_land"), dropna=False)
     co_own_land  = vc(comp["co_own_land"],  lab("co_own_land"),  dropna=False)
+    knows_land   = vc(comp["s2_q1"], lab("s2_q1"), dropna=False)
+    land_size    = vc(comp["s2_q2"], lab("s2_q2"), dropna=False)
 
     decision_money = vc(comp["s4_q1"], lab("s4_q1"), dropna=False)
     decision_daily = vc(comp["s4_q2"], lab("s4_q2"), dropna=False)
     decision_save  = vc(comp["s4_q3"], lab("s4_q3"), dropna=False)
+    feels_safe     = vc(comp["s4_q4"], lab("s4_q4"), dropna=False)
+
+    # ---- Respondent enrichment ----
+    age = pd.to_numeric(comp["s1_q6"], errors="coerce")
+    age_marriage = pd.to_numeric(comp["s1_q9"], errors="coerce")
+    n_child = pd.to_numeric(comp["no_of_child"], errors="coerce")
+    literacy = vc(comp["s1_q14"], lab("s1_q14"), dropna=False)
+    earns = vc(comp["s1_q16"], lab("s1_q16"), dropna=False)
+    always_village = vc(comp["s1_q7"], lab("s1_q7"), dropna=False)
+
+    # education grouped into readable bands
+    edu_raw = pd.to_numeric(comp["s1_q15"], errors="coerce")
+    edu_bands = [
+        ("No Education", edu_raw == 1),
+        ("Primary (1–5)", edu_raw.isin([2, 3, 4, 5, 6])),
+        ("Middle (6–8)", edu_raw.isin([7, 8, 9])),
+        ("Matric (9–10)", edu_raw.isin([10, 11])),
+        ("Intermediate", edu_raw == 12),
+        ("Bachelors+", edu_raw.isin([13, 14])),
+        ("Other / Madrassa", edu_raw.isin([15, 777])),
+    ]
+    education = [{"label": l, "value": int(c.sum())} for l, c in edu_bands if int(c.sum()) > 0]
+
+    age_bins = []
+    for label, cond in [("18–29", (age >= 18) & (age < 30)), ("30–39", (age >= 30) & (age < 40)),
+                        ("40–49", (age >= 40) & (age < 50)), ("50–59", (age >= 50) & (age < 60)),
+                        ("60+", age >= 60)]:
+        age_bins.append({"label": label, "value": int(cond.sum())})
+
+    avg_age = round(float(age.mean()), 1) if len(age.dropna()) else 0
+    avg_age_marriage = round(float(age_marriage.mean()), 1) if len(age_marriage.dropna()) else 0
+    avg_children = round(float(n_child.mean()), 1) if len(n_child.dropna()) else 0
+    literacy_rate = next((int(round(100 * x["value"] / max(sum(z["value"] for z in literacy if z["label"] != "No response"), 1)))
+                          for x in literacy if x["label"] == "Yes"), 0)
+
+    # ---- Vignette (Ayesha vs Amir land-inheritance dispute) ----
+    vig_scale = {1: "Very Justified", 2: "Somewhat Justified", 3: "Neutral",
+                 4: "Somewhat Unjustified", 5: "Very Unjustified"}
+    vignette = {
+        "ayesha_sell":  vc(comp["ayesha_sell_justified"], vig_scale, dropna=False),
+        "amir_refuse":  vc(comp["amir_refuse_justified"], vig_scale, dropna=False),
+        "ayesha_patwari": vc(comp["ayesha_patwari"], vig_scale, dropna=False),
+        "ayesha_legal": vc(comp["ayesha_legal"], vig_scale, dropna=False),
+        "patwari_side": vc(comp["patwari_side"], lab("patwari_side"), dropna=False),
+        "court_side":   vc(comp["court_side"], lab("court_side"), dropna=False),
+    }
+    def pct_support(arr, keys):
+        tot = sum(x["value"] for x in arr if x["label"] != "No response")
+        s = sum(x["value"] for x in arr if x["label"] in keys)
+        return int(round(100 * s / tot)) if tot else 0
+    vignette_meta = {
+        "ayesha_sell_support": pct_support(vignette["ayesha_sell"], {"Very Justified", "Somewhat Justified"}),
+        "amir_refuse_unjust": pct_support(vignette["amir_refuse"], {"Very Unjustified", "Somewhat Unjustified"}),
+        "patwari_ayesha": pct_support(vignette["patwari_side"], {"Ayesha"}),
+        "court_ayesha": pct_support(vignette["court_side"], {"Ayesha"}),
+    }
 
     # mobility: days outside village alone (numeric text)
     mob = pd.to_numeric(comp["s4_q5"], errors="coerce")
@@ -221,6 +279,11 @@ def main():
             "field_days": field_days,
             "avg_duration": avg_duration,
             "pct_complete": round(100 * n_complete / total_target, 1) if total_target else 0,
+            "avg_age": avg_age,
+            "avg_age_marriage": avg_age_marriage,
+            "avg_children": avg_children,
+            "literacy_rate": literacy_rate,
+            "vignette": vignette_meta,
         },
         "daily": daily_list,
         "tehsil_split": tehsil_split,
@@ -231,19 +294,20 @@ def main():
         "father_died": father_died,
         "inherit_land": inherit_land,
         "co_own_land": co_own_land,
+        "knows_land": knows_land,
+        "land_size": land_size,
         "decision_money": decision_money,
         "decision_daily": decision_daily,
         "decision_save": decision_save,
+        "feels_safe": feels_safe,
         "mobility": mobility,
         "relationship": rel,
-        "enumerators": enumerators,
-        "duration_bins": dur_bins,
-        "consent_funnel": [
-            {"label": "Submissions", "value": n_submissions},
-            {"label": "Intro consent", "value": n_intro_yes},
-            {"label": "Consented", "value": n_consent_yes},
-            {"label": "Completed", "value": n_complete},
-        ],
+        "education": education,
+        "age_bins": age_bins,
+        "literacy": literacy,
+        "earns": earns,
+        "always_village": always_village,
+        "vignette": vignette,
         "mouza_table": rows,
     }
 

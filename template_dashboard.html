@@ -209,7 +209,7 @@
       <button class="nav-tab" onclick="showPanel('profile',this)">👩 Respondent Profile</button>
       <button class="nav-tab" onclick="showPanel('land',this)">🌾 Land &amp; Inheritance</button>
       <button class="nav-tab" onclick="showPanel('empower',this)">⚖️ Empowerment</button>
-      <button class="nav-tab" onclick="showPanel('field',this)">🛠️ Fieldwork &amp; Quality</button>
+      <button class="nav-tab" onclick="showPanel('vignette',this)">🧑‍⚖️ Land Dispute Vignette</button>
       <button class="nav-tab" onclick="showPanel('mouza',this)">🗺️ Mouza Completion</button>
     </nav>
   </div>
@@ -269,19 +269,24 @@
       <div class="section-header-accent"></div>
       <div>
         <h2>Respondent Profile</h2>
-        <p>Who is being interviewed? Respondent type, marital status, and access to communication technology among completed interviews.</p>
+        <p>Who is being interviewed? A demographic portrait of the women in the sample — age, marriage, children, education, literacy, economic activity, residence, marital status, and access to technology.</p>
       </div>
     </div>
     <div class="kpi-grid" id="pr-kpis"></div>
     <div class="chart-grid cols-2">
-      <div class="chart-card"><h3>Respondent Type</h3><div class="chart-desc">Relationship of respondent to the landholding</div><div class="chart-wrap"><canvas id="chartRespType"></canvas></div></div>
-      <div class="chart-card"><h3>Marital Status</h3><div class="chart-desc">Marital status of respondents</div><div class="chart-wrap"><canvas id="chartMarital"></canvas></div></div>
+      <div class="chart-card"><h3>Age Distribution</h3><div class="chart-desc">Respondent age, grouped into bands</div><div class="chart-wrap"><canvas id="chartAge"></canvas></div></div>
+      <div class="chart-card"><h3>Highest Education Level</h3><div class="chart-desc">Highest completed level of education</div><div class="chart-wrap"><canvas id="chartEducation"></canvas></div></div>
+    </div>
+    <div class="chart-grid cols-3">
+      <div class="chart-card"><h3>Literacy</h3><div class="chart-desc">Can read and write (Urdu or other)</div><div class="chart-wrap"><canvas id="chartLiteracy"></canvas></div></div>
+      <div class="chart-card"><h3>Earns Money</h3><div class="chart-desc">Does any work to earn money</div><div class="chart-wrap"><canvas id="chartEarns"></canvas></div></div>
+      <div class="chart-card"><h3>Always Lived in Village</h3><div class="chart-desc">Lifelong resident of the village</div><div class="chart-wrap"><canvas id="chartResidence"></canvas></div></div>
     </div>
     <div class="chart-grid cols-2">
-      <div class="chart-card"><h3>Smartphone Access</h3><div class="chart-desc">Whether the respondent owns a smartphone</div><div class="chart-wrap"><canvas id="chartPhone"></canvas></div></div>
-      <div class="chart-card"><h3>Household Decision-Maker — Major Spending</h3><div class="chart-desc">Who decides on major household expenditure</div><div class="chart-wrap tall"><canvas id="chartDecMoney"></canvas></div></div>
+      <div class="chart-card"><h3>Marital Status</h3><div class="chart-desc">Marital status of respondents</div><div class="chart-wrap"><canvas id="chartMarital"></canvas></div></div>
+      <div class="chart-card"><h3>Respondent Type &amp; Smartphone Access</h3><div class="chart-desc">Relationship to landholding · device ownership</div><div class="chart-wrap"><canvas id="chartRespType"></canvas></div></div>
     </div>
-    <p class="footnote">Based on completed interviews only. The survey predominantly targets women (wives) as the primary respondents on land-rights questions.</p>
+    <p class="footnote">Based on completed interviews only. The survey predominantly targets women (wives) as the primary respondents on land-rights questions. Education bands: Primary = Class 1–5, Middle = 6–8, Matric = 9–10.</p>
   </div>
 
   <!-- LAND & INHERITANCE -->
@@ -302,6 +307,10 @@
       <div class="chart-card"><h3>Inherited the Land</h3><div class="chart-desc">Whether the respondent inherited the land that belonged to the father/in-law</div><div class="chart-wrap"><canvas id="chartInherit"></canvas></div></div>
       <div class="chart-card"><h3>Co-owns the Land</h3><div class="chart-desc">Whether the respondent co-owns this land</div><div class="chart-wrap"><canvas id="chartCoOwn"></canvas></div></div>
     </div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Knows How Much Land Family Owns</h3><div class="chart-desc">Whether the respondent knows the size of the husband's / father-in-law's landholding</div><div class="chart-wrap"><canvas id="chartKnowsLand"></canvas></div></div>
+      <div class="chart-card"><h3>Size of Family Landholding</h3><div class="chart-desc">Reported size of the husband's / father-in-law's land</div><div class="chart-wrap tall"><canvas id="chartLandSize"></canvas></div></div>
+    </div>
     <p class="footnote">Codes: 1 = Yes, 2 = No, 666 = Refuse to answer, 999 = Don't know. Indicators measured among completed interviews.</p>
   </div>
 
@@ -318,31 +327,47 @@
       <div class="chart-card"><h3>Everyday Purchase Decisions</h3><div class="chart-desc">Who usually decides on everyday household purchases</div><div class="chart-wrap tall"><canvas id="chartDecDaily"></canvas></div></div>
       <div class="chart-card"><h3>Saving Decisions</h3><div class="chart-desc">Who decides how the household saves</div><div class="chart-wrap tall"><canvas id="chartDecSave"></canvas></div></div>
     </div>
-    <div class="chart-grid cols-2">
+    <div class="chart-grid cols-3">
       <div class="chart-card"><h3>Mobility — Days Outside Village Alone (Past Week)</h3><div class="chart-desc">Number of days the respondent went outside the village alone in the past week</div><div class="chart-wrap"><canvas id="chartMobility"></canvas></div></div>
+      <div class="chart-card"><h3>Feels Safe Moving Alone</h3><div class="chart-desc">Whether the respondent feels safe to walk/move in her area alone</div><div class="chart-wrap"><canvas id="chartSafe"></canvas></div></div>
       <div class="chart-card"><h3>Relationship with Male Head — Mean Scores</h3><div class="chart-desc">Quality of relationship with male head of household (1 = Never, 4 = Always)</div><div class="chart-wrap"><canvas id="chartRel"></canvas></div></div>
     </div>
     <p class="footnote">Decision-making categories follow the household roster scale. Relationship items rated 1 = Never, 2 = Sometimes, 3 = Often, 4 = Always; higher is better.</p>
   </div>
 
-  <!-- FIELDWORK & QUALITY -->
-  <div class="panel" id="panel-field">
+  <!-- LAND DISPUTE VIGNETTE -->
+  <div class="panel" id="panel-vignette">
     <div class="section-header">
       <div class="section-header-accent"></div>
       <div>
-        <h2>Fieldwork &amp; Data Quality</h2>
-        <p>Enumerator productivity, interview duration, and the consent funnel — operational indicators for monitoring field performance and data quality.</p>
+        <h2>Land Dispute Vignette — Ayesha &amp; Amir</h2>
+        <p>Respondents were read a short scenario about inheritance and asked to judge it. The vignette measures attitudes toward a woman exercising her inheritance rights, and perceptions of how local institutions (the patwari and the courts) would adjudicate the dispute.</p>
       </div>
     </div>
-    <div class="kpi-grid" id="fl-kpis"></div>
-    <div class="chart-grid cols-2">
-      <div class="chart-card full"><h3>Enumerator Productivity</h3><div class="chart-desc">Completed interviews per enumerator</div><div class="chart-wrap tall"><canvas id="chartEnum"></canvas></div></div>
+
+    <div class="insight-box navy" style="margin-bottom:24px;">
+      <strong>📖 The scenario:</strong> Ayesha and Amir are sister and brother. After their father's death, both inherited a share of his agricultural land. <strong>Ayesha wants to sell her share</strong>; her brother <strong>Amir refuses to allow the sale</strong> and continues farming the land. Respondents were asked how justified each sibling is, and — if Ayesha approached the <em>patwari</em> (land registrar) or the <em>courts</em> — who they believe each institution would side with.
     </div>
+
+    <div class="kpi-grid" id="vg-kpis"></div>
+
     <div class="chart-grid cols-2">
-      <div class="chart-card"><h3>Interview Duration</h3><div class="chart-desc">Distribution of completed-interview length (minutes)</div><div class="chart-wrap"><canvas id="chartDuration"></canvas></div></div>
-      <div class="chart-card"><h3>Consent &amp; Completion Funnel</h3><div class="chart-desc">From total submissions to completed interviews</div><div class="chart-wrap"><canvas id="chartFunnel"></canvas></div></div>
+      <div class="chart-card"><h3>Is Ayesha Justified in Wanting to Sell?</h3><div class="chart-desc">How justified respondents find Ayesha's wish to sell her inherited share</div><div class="chart-wrap"><canvas id="chartVigSell"></canvas></div></div>
+      <div class="chart-card"><h3>Is Amir Justified in Refusing?</h3><div class="chart-desc">How justified respondents find Amir's refusal to allow the sale</div><div class="chart-wrap"><canvas id="chartVigRefuse"></canvas></div></div>
     </div>
-    <p class="footnote">Duration computed from interview start and end timestamps. The consent funnel tracks attrition from first contact through to a completed interview.</p>
+
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Justified to Approach the Patwari?</h3><div class="chart-desc">How justified it would be for Ayesha to take the matter to the patwari</div><div class="chart-wrap"><canvas id="chartVigPatwari"></canvas></div></div>
+      <div class="chart-card"><h3>Justified to Approach the Courts?</h3><div class="chart-desc">How justified it would be for Ayesha to take the matter to court</div><div class="chart-wrap"><canvas id="chartVigLegal"></canvas></div></div>
+    </div>
+
+    <div class="chart-grid cols-2">
+      <div class="chart-card"><h3>Who Would the Patwari Side With?</h3><div class="chart-desc">Respondents' perception of how the patwari would rule</div><div class="chart-wrap"><canvas id="chartVigPatwariSide"></canvas></div></div>
+      <div class="chart-card"><h3>Who Would the Courts Side With?</h3><div class="chart-desc">Respondents' perception of how the courts would rule</div><div class="chart-wrap"><canvas id="chartVigCourtSide"></canvas></div></div>
+    </div>
+
+    <div class="insight-row" id="vg-insights"></div>
+    <p class="footnote">Justification scale: 1 = Very Justified … 5 = Very Unjustified. Institutional perception items ask who (Ayesha or Amir) the patwari / courts would side with. Vignette administered to all completed interviews.</p>
   </div>
 
   <!-- MOUZA COMPLETION -->
@@ -358,10 +383,11 @@
     <div class="mz-toolbar">
       <input type="text" id="mz-search" class="mz-search" placeholder="🔍  Search mouza or tehsil…" oninput="renderMouzaTable()">
       <select id="mz-status" class="mz-filter" onchange="renderMouzaTable()">
-        <option value="all">All statuses</option>
+        <option value="started" selected>Started only (active mouzas)</option>
         <option value="In Progress">In Progress</option>
         <option value="Completed">Completed</option>
         <option value="Not Started">Not Started</option>
+        <option value="all">All mouzas</option>
       </select>
       <select id="mz-tehsil" class="mz-filter" onchange="renderMouzaTable()"></select>
       <span class="mz-count" id="mz-count"></span>
@@ -505,16 +531,21 @@ function renderAll(){
   barChart('chartTehsil', D.tehsil_split, NAVY, false);
 
   // ---- Respondent profile ----
-  const rt = D.resp_type, ms = D.marital;
+  const ms = D.marital;
   document.getElementById('pr-kpis').innerHTML =
-    kpi('👩', topShare(rt), 'Most Common Respondent', topLabel(rt), 'navy', 'navy') +
-    kpi('💍', topShare(ms), 'Most Common Marital Status', topLabel(ms), 'navy', 'teal') +
-    kpi('📱', pctYes(D.smartphone)+'%', 'Own a Smartphone', 'Of completed interviews', 'up', 'amber') +
-    kpi('🧮', D.meta.n_complete, 'Profiles Captured', 'Completed interviews', 'navy', 'purple');
-  donutChart('chartRespType', rt, [NAVY, RED, TEAL]);
-  barChart('chartMarital', ms, TEAL, true);
-  donutChart('chartPhone', D.smartphone, [GREEN, '#cbd5e1', '#94a3b8']);
-  barChart('chartDecMoney', D.decision_money, NAVY, true);
+    kpi('🎂', m.avg_age, 'Average Age (years)', 'Of completed interviews', 'navy', 'navy') +
+    kpi('💒', m.avg_age_marriage, 'Avg Age at Marriage', 'Years', 'navy', 'teal') +
+    kpi('👶', m.avg_children, 'Average Children', 'Per respondent', 'navy', 'amber') +
+    kpi('📖', m.literacy_rate+'%', 'Literacy Rate', 'Can read &amp; write', 'up', 'green') +
+    kpi('📱', pctYes(D.smartphone)+'%', 'Own a Smartphone', 'Of completed interviews', 'up', 'purple') +
+    kpi('💍', topShare(ms), 'Most Common Status', topLabel(ms), 'navy');
+  barChart('chartAge', D.age_bins, NAVY, false);
+  barChart('chartEducation', D.education, TEAL, true);
+  donutChart('chartLiteracy', D.literacy, [GREEN, RED, '#94a3b8']);
+  donutChart('chartEarns', D.earns, [AMBER, '#cbd5e1', '#94a3b8', '#64748b']);
+  donutChart('chartResidence', D.always_village, [NAVY, RED]);
+  barChart('chartMarital', ms, PURPLE, true);
+  donutChart('chartRespType', D.resp_type, [NAVY, RED, TEAL]);
 
   // ---- Land & inheritance ----
   document.getElementById('la-kpis').innerHTML =
@@ -526,26 +557,36 @@ function renderAll(){
   donutChart('chartFatherDied', D.father_died, [NAVY, TEAL, '#94a3b8']);
   donutChart('chartInherit', D.inherit_land, [TEAL, RED, '#94a3b8']);
   donutChart('chartCoOwn', D.co_own_land, [AMBER, RED, '#94a3b8']);
+  donutChart('chartKnowsLand', D.knows_land, [NAVY, RED, '#94a3b8']);
+  barChart('chartLandSize', D.land_size, TEAL, true);
 
   // ---- Empowerment ----
   barChart('chartDecDaily', D.decision_daily, TEAL, true);
   barChart('chartDecSave', D.decision_save, PURPLE, true);
   barChart('chartMobility', D.mobility, AMBER, false);
+  donutChart('chartSafe', D.feels_safe, [GREEN, RED, '#94a3b8']);
   const rel = Object.keys(D.relationship).map(k=>({label:k, value:D.relationship[k]}));
   const relEl=document.getElementById('chartRel');
   if(relEl) new Chart(relEl,{type:'bar', data:{labels:L(rel), datasets:[{data:V(rel), backgroundColor:NAVY, borderRadius:6, maxBarThickness:60}]},
     options:baseOpts({plugins:{legend:{display:false}, datalabels:{display:true,anchor:'end',align:'top',color:'#475569',font:{family:'Inter',size:12,weight:'700'}}},
       scales:{x:{ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{display:false}},y:{min:0,max:4,ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{color:GRID}}}})});
 
-  // ---- Fieldwork ----
-  document.getElementById('fl-kpis').innerHTML =
-    kpi('🧑‍💼', D.enumerators.length, 'Active Enumerators', 'Submitting completed interviews', 'navy', 'navy') +
-    kpi('⏱️', m.avg_duration+' min', 'Median Interview Length', 'Per completed interview', 'navy', 'teal') +
-    kpi('🤝', m.consent_rate+'%', 'Consent Rate', m.n_submissions+' total submissions', 'up', 'green') +
-    kpi('📅', m.field_days, 'Field Days', 'Active collection days', 'navy', 'amber');
-  barChart('chartEnum', D.enumerators, NAVY, true);
-  barChart('chartDuration', D.duration_bins, TEAL, false);
-  barChart('chartFunnel', D.consent_funnel, RED, true);
+  // ---- Vignette ----
+  const vg = D.vignette, vm = m.vignette;
+  document.getElementById('vg-kpis').innerHTML =
+    kpi('👩‍🌾', vm.ayesha_sell_support+'%', "Support Ayesha's Right to Sell", 'Find her wish justified', 'up', 'green') +
+    kpi('🚫', vm.amir_refuse_unjust+'%', "Amir's Refusal Unjustified", 'Reject his refusal', 'up', 'teal') +
+    kpi('📋', vm.patwari_ayesha+'%', 'Patwari Would Favour Ayesha', 'Perceived institutional support', 'up', 'amber') +
+    kpi('⚖️', vm.court_ayesha+'%', 'Courts Would Favour Ayesha', 'Perceived legal support', 'up', 'purple');
+  barChart('chartVigSell', vg.ayesha_sell, GREEN, true);
+  barChart('chartVigRefuse', vg.amir_refuse, RED, true);
+  barChart('chartVigPatwari', vg.ayesha_patwari, AMBER, true);
+  barChart('chartVigLegal', vg.ayesha_legal, PURPLE, true);
+  donutChart('chartVigPatwariSide', vg.patwari_side, [RED, NAVY]);
+  donutChart('chartVigCourtSide', vg.court_side, [RED, NAVY]);
+  document.getElementById('vg-insights').innerHTML =
+    `<div class="insight-box primary"><strong>Strong backing for women's land rights:</strong> ${vm.ayesha_sell_support}% of respondents consider Ayesha justified in wanting to sell her inherited share, while ${vm.amir_refuse_unjust}% view her brother Amir's refusal as unjustified — a clear endorsement of a woman's right to control her inheritance.</div>` +
+    `<div class="insight-box navy"><strong>Faith in formal institutions:</strong> Respondents expect institutions to protect Ayesha — ${vm.patwari_ayesha}% believe the patwari would side with her, rising to ${vm.court_ayesha}% for the courts. Confidence is higher in the courts than in the local land registrar.</div>`;
 
   // ---- Mouza ----
   buildMouzaPanel();
@@ -615,7 +656,8 @@ function renderMouzaTable(){
   let rows=D.mouza_table.filter(r=>{
     const hay=(r.mauza+r.tehsil).toUpperCase().replace(/\s/g,'');
     if(q && !hay.includes(q)) return false;
-    if(st!=='all' && r.status!==st) return false;
+    if(st==='started'){ if(r.total_done===0) return false; }
+    else if(st!=='all' && r.status!==st) return false;
     if(th!=='all' && r.tehsil!==th) return false;
     return true;
   });
