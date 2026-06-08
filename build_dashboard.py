@@ -33,6 +33,11 @@ COMPLETE_STATUS = 1          # status_survey == 1  => completed interview
 URBAN_CATS = {3}             # track_cat: 3 = city  (urban)
 RURAL_CATS = {1, 2}          # track_cat: 1,2 = village (rural)
 
+# Headline sampling target shown on the dashboard.
+# Set to None to use the per-mouza sums from target_file.xlsx instead.
+# (Per-mouza Mouza Completion table always uses target_file.xlsx.)
+TARGET_OVERRIDE = {"total": 3750, "urban": 1250, "rural": 2500}
+
 
 def vc(series, labels=None, dropna=True):
     """value_counts as ordered list of {label, value} using a label map."""
@@ -83,11 +88,11 @@ def main():
     n_submissions = len(df)
 
     # ------------------------------------------------------------------
-    # Daily submissions (use starttime date)
+    # Daily COMPLETED interviews (sums to n_complete = 76)
     # ------------------------------------------------------------------
     daily = {}
-    if "starttime" in df.columns:
-        st = pd.to_datetime(df["starttime"], errors="coerce")
+    if "starttime" in comp.columns:
+        st = pd.to_datetime(comp["starttime"], errors="coerce")
         for d in st.dropna().dt.date:
             key = d.isoformat()
             daily[key] = daily.get(key, 0) + 1
@@ -96,9 +101,14 @@ def main():
     # ------------------------------------------------------------------
     # Targets (district-wide)
     # ------------------------------------------------------------------
-    total_target = int(target["target_final"].sum())
-    urban_target = int(target["urban_target"].sum())
-    rural_target = int(target["rural_target"].sum())
+    if TARGET_OVERRIDE:
+        total_target = int(TARGET_OVERRIDE["total"])
+        urban_target = int(TARGET_OVERRIDE["urban"])
+        rural_target = int(TARGET_OVERRIDE["rural"])
+    else:
+        total_target = int(target["target_final"].sum())
+        urban_target = int(target["urban_target"].sum())
+        rural_target = int(target["rural_target"].sum())
     n_target_mauzas = int(target["Mauza_sample"].nunique())
     n_tehsils = int(target["Tehsil_sample"].nunique())
 
