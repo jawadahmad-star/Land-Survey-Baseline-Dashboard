@@ -309,7 +309,7 @@
     </div>
     <div class="chart-grid cols-2">
       <div class="chart-card"><h3>Knows How Much Land Family Owns</h3><div class="chart-desc">Whether the respondent knows the size of the husband's / father-in-law's landholding</div><div class="chart-wrap"><canvas id="chartKnowsLand"></canvas></div></div>
-      <div class="chart-card"><h3>Size of Family Landholding</h3><div class="chart-desc">Reported size of the husband's / father-in-law's land</div><div class="chart-wrap tall"><canvas id="chartLandSize"></canvas></div></div>
+      <div class="chart-card"><h3>Size of Family Landholding</h3><div class="chart-desc">Reported size of the husband's / father-in-law's land (% of respondents)</div><div class="chart-wrap tall"><canvas id="chartLandSize"></canvas></div></div>
     </div>
     <p class="footnote">Codes: 1 = Yes, 2 = No, 666 = Refuse to answer, 999 = Don't know. Indicators measured among completed interviews.</p>
   </div>
@@ -561,7 +561,7 @@ function renderAll(){
   donutChart('chartInherit', D.inherit_land, [TEAL, RED, '#94a3b8']);
   donutChart('chartCoOwn', D.co_own_land, [AMBER, RED, '#94a3b8']);
   donutChart('chartKnowsLand', D.knows_land, [NAVY, RED, '#94a3b8']);
-  barChart('chartLandSize', D.land_size, TEAL, true);
+  barChart('chartLandSize', P(D.land_size.filter(x=>x.label!=='No response')), TEAL, true, '%');
 
   // ---- Empowerment ----
   barChart('chartDecDaily', P(D.decision_daily.filter(x=>x.label!=='No response')), TEAL, true, '%');
