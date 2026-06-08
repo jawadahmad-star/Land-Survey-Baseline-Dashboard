@@ -582,10 +582,11 @@ function renderAll(){
     kpi('🚫', vm.amir_refuse_unjust+'%', "Amir's Refusal Unjustified", 'Reject his refusal', 'up', 'teal') +
     kpi('📋', vm.patwari_ayesha+'%', 'Patwari Would Favour Ayesha', 'Perceived institutional support', 'up', 'amber') +
     kpi('⚖️', vm.court_ayesha+'%', 'Courts Would Favour Ayesha', 'Perceived legal support', 'up', 'purple');
-  barChart('chartVigSell', vg.ayesha_sell, GREEN, true);
-  barChart('chartVigRefuse', vg.amir_refuse, RED, true);
-  barChart('chartVigPatwari', vg.ayesha_patwari, AMBER, true);
-  barChart('chartVigLegal', vg.ayesha_legal, PURPLE, true);
+  const noNR = a => a.filter(x=>x.label!=='No response');
+  barChart('chartVigSell', P(noNR(vg.ayesha_sell)), GREEN, true, '%');
+  barChart('chartVigRefuse', P(noNR(vg.amir_refuse)), RED, true, '%');
+  barChart('chartVigPatwari', P(noNR(vg.ayesha_patwari)), AMBER, true, '%');
+  barChart('chartVigLegal', P(noNR(vg.ayesha_legal)), PURPLE, true, '%');
   donutChart('chartVigPatwariSide', vg.patwari_side, [RED, NAVY]);
   donutChart('chartVigCourtSide', vg.court_side, [RED, NAVY]);
   document.getElementById('vg-insights').innerHTML =
