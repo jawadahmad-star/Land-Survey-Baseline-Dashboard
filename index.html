@@ -472,15 +472,44 @@ const L = a => a.map(x=>x.label);
 const V = a => a.map(x=>x.value);
 // convert {label,value} counts -> percentage of total (rounded)
 const P = a => { const t=a.reduce((s,x)=>s+x.value,0)||1; return a.map(x=>({label:x.label, value:Math.round(100*x.value/t)})); };
+// Wrap a long category label into short lines so the full text stays
+// readable directly on the axis (no hover/tooltip needed).
+function wrapTick(label, max){
+  max = max || 18;
+  const words = String(label).split(/\s+/), lines = []; let line='';
+  for(const w of words){
+    if(line && (line+' '+w).length > max){ lines.push(line); line=w; }
+    else line = line ? line+' '+w : w;
+  }
+  if(line) lines.push(line);
+  return lines.length ? lines : [String(label)];
+}
+// Short, readable labels for the decision-maker questions (Empowerment).
+const DEC_SHORT = {
+  'Me (alone)':'Me alone',
+  'My spouse and I decide together':'Spouse & I (joint)',
+  'My spouse (alone)':'Spouse alone',
+  'My son and I decide together':'Son & I (joint)',
+  'My son(alone)':'Son alone',
+  'My brother and I decide together':'Brother & I (joint)',
+  'My sister(alone)':'Sister alone',
+  'Some other combination of family members decide (specify________)':'Other family combination'
+};
+const shortLab = (arr, map) => arr.map(x=>({label: map[x.label]||x.label, value:x.value}));
 
 function barChart(id, arr, color, horizontal, suffix){
   const el=document.getElementById(id); if(!el) return;
   const sfx = suffix||'';
+  // category axis: always show every label, fully wrapped, never rotated
+  const catTicks = {font:{family:'Inter',size:11},color:'#475569',autoSkip:false,maxRotation:0,minRotation:0,
+                    callback:function(v){ return wrapTick(this.getLabelForValue(v)); }};
+  // value axis: numeric ticks (optionally suffixed, e.g. %)
+  const valTicks = {font:{family:'Inter',size:11},color:'#475569',callback:sfx?(v=>v+sfx):undefined};
   new Chart(el,{type:'bar', data:{labels:L(arr), datasets:[{data:V(arr), backgroundColor:color, borderRadius:6, maxBarThickness:46}]},
     options:baseOpts({ indexAxis: horizontal?'y':'x',
       plugins:{legend:{display:false}, datalabels:{display:true, anchor:'end', align:horizontal?'right':'top', color:'#475569', font:{family:'Inter',size:11,weight:'600'}, formatter:v=>v?(v+sfx):''}},
-      scales:{ x:{ticks:{font:{family:'Inter',size:11},color:'#475569',callback:(sfx&&horizontal)?(v=>v+sfx):undefined},grid:{display:!horizontal,color:GRID}},
-               y:{ticks:{font:{family:'Inter',size:11},color:'#475569',callback:(sfx&&!horizontal)?(v=>v+sfx):undefined},grid:{display:horizontal?false:true,color:GRID},beginAtZero:true}} }) });
+      scales:{ x:{ticks: horizontal?valTicks:catTicks, grid:{display:!horizontal,color:GRID}},
+               y:{ticks: horizontal?catTicks:valTicks, grid:{display:horizontal?false:true,color:GRID}, beginAtZero:true}} }) });
 }
 
 function donutChart(id, arr, colors){
@@ -564,8 +593,8 @@ function renderAll(){
   barChart('chartLandSize', P(D.land_size.filter(x=>x.label!=='No response')), TEAL, true, '%');
 
   // ---- Empowerment ----
-  barChart('chartDecDaily', P(D.decision_daily.filter(x=>x.label!=='No response')), TEAL, true, '%');
-  barChart('chartDecSave', P(D.decision_save.filter(x=>x.label!=='No response')), PURPLE, true, '%');
+  barChart('chartDecDaily', P(shortLab(D.decision_daily.filter(x=>x.label!=='No response'), DEC_SHORT)), TEAL, true, '%');
+  barChart('chartDecSave', P(shortLab(D.decision_save.filter(x=>x.label!=='No response'), DEC_SHORT)), PURPLE, true, '%');
   barChart('chartMobility', P(D.mobility), AMBER, false, '%');
   donutChart('chartSafe', D.feels_safe, [GREEN, RED, '#94a3b8']);
   // relationship: mean (0-4) shown as % of maximum scale
@@ -573,7 +602,7 @@ function renderAll(){
   const relEl=document.getElementById('chartRel');
   if(relEl) new Chart(relEl,{type:'bar', data:{labels:L(rel), datasets:[{data:V(rel), backgroundColor:NAVY, borderRadius:6, maxBarThickness:60}]},
     options:baseOpts({plugins:{legend:{display:false}, datalabels:{display:true,anchor:'end',align:'top',color:'#475569',font:{family:'Inter',size:12,weight:'700'},formatter:v=>v+'%'}},
-      scales:{x:{ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{display:false}},y:{min:0,max:100,ticks:{font:{family:'Inter',size:11},color:'#475569',callback:v=>v+'%'},grid:{color:GRID}}}})});
+      scales:{x:{ticks:{font:{family:'Inter',size:11},color:'#475569',autoSkip:false,maxRotation:0,minRotation:0,callback:function(v){return wrapTick(this.getLabelForValue(v));}},grid:{display:false}},y:{min:0,max:100,ticks:{font:{family:'Inter',size:11},color:'#475569',callback:v=>v+'%'},grid:{color:GRID}}}})});
 
   // ---- Vignette ----
   const vg = D.vignette, vm = m.vignette;
