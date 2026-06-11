@@ -505,11 +505,14 @@ function barChart(id, arr, color, horizontal, suffix){
                     callback:function(v){ return wrapTick(this.getLabelForValue(v)); }};
   // value axis: numeric ticks (optionally suffixed, e.g. %)
   const valTicks = {font:{family:'Inter',size:11},color:'#475569',callback:sfx?(v=>v+sfx):undefined};
+  // headroom (grace) + layout padding so the value label above/beside the
+  // tallest bar is never clipped at the edge of the chart box
   new Chart(el,{type:'bar', data:{labels:L(arr), datasets:[{data:V(arr), backgroundColor:color, borderRadius:6, maxBarThickness:46}]},
     options:baseOpts({ indexAxis: horizontal?'y':'x',
-      plugins:{legend:{display:false}, datalabels:{display:true, anchor:'end', align:horizontal?'right':'top', color:'#475569', font:{family:'Inter',size:11,weight:'600'}, formatter:v=>v?(v+sfx):''}},
-      scales:{ x:{ticks: horizontal?valTicks:catTicks, grid:{display:!horizontal,color:GRID}},
-               y:{ticks: horizontal?catTicks:valTicks, grid:{display:horizontal?false:true,color:GRID}, beginAtZero:true}} }) });
+      layout:{padding:{top:horizontal?8:18, right:horizontal?28:8}},
+      plugins:{legend:{display:false}, datalabels:{display:true, anchor:'end', align:horizontal?'right':'top', clamp:true, clip:false, color:'#475569', font:{family:'Inter',size:11,weight:'600'}, formatter:v=>v?(v+sfx):''}},
+      scales:{ x:{ticks: horizontal?valTicks:catTicks, grid:{display:!horizontal,color:GRID}, ...(horizontal?{beginAtZero:true,grace:'12%'}:{})},
+               y:{ticks: horizontal?catTicks:valTicks, grid:{display:horizontal?false:true,color:GRID}, beginAtZero:true, ...(horizontal?{}:{grace:'12%'})}} }) });
 }
 
 function donutChart(id, arr, colors){
