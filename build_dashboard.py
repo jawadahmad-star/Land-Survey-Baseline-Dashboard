@@ -123,34 +123,43 @@ def main():
         rural_done=("is_rural", "sum"),
         total_done=("is_urban", "size"),
     )
+    # touched = field team reached the mauza (ANY survey record, any status:
+    # completed, locked/empty, refused, respondent died, etc.). This matches
+    # the Touched_Mauza tracker (build_mauza_touch.py); a mauza can be touched
+    # without a single completed interview yet.
+    touched_src = df[df["mauza"].notna() & (df["mauza"].astype(str).str.strip() != "")]
+    touched_by_mauza = touched_src.groupby("mauza").size()
     rows = []
     for _, r in target.iterrows():
         mauza = r["Mauza_sample"]
         ud = int(done_by_mauza["urban_done"].get(mauza, 0)) if mauza in done_by_mauza.index else 0
         rd = int(done_by_mauza["rural_done"].get(mauza, 0)) if mauza in done_by_mauza.index else 0
         td = int(done_by_mauza["total_done"].get(mauza, 0)) if mauza in done_by_mauza.index else 0
+        touched = bool(mauza in touched_by_mauza.index)
         tt = int(r["target_final"])
         ut = int(r["urban_target"])
         rt = int(r["rural_target"])
         pct = round(100 * td / tt, 1) if tt else 0.0
-        if td == 0:
-            status = "Not Started"
-        elif td >= tt:
+        if tt and td >= tt:
             status = "Completed"
-        else:
+        elif td > 0 or touched:
+            # field work has begun (completed interviews and/or visits made)
             status = "In Progress"
+        else:
+            status = "Not Started"
         rows.append({
             "mauza": mauza,
             "tehsil": r["Tehsil_sample"],
             "urban_done": ud, "urban_target": ut,
             "rural_done": rd, "rural_target": rt,
             "total_done": td, "total_target": tt,
+            "touched": touched,
             "pct": pct, "status": status,
         })
-    # sort: in-progress/completed first (by completion desc), then not started
-    rows.sort(key=lambda x: (x["total_done"] == 0, -x["total_done"], -x["pct"]))
+    # sort: started (touched/completed) first (by completion desc), then not started
+    rows.sort(key=lambda x: (not x["touched"], -x["total_done"], -x["pct"]))
 
-    mauzas_started = sum(1 for x in rows if x["total_done"] > 0)
+    mauzas_started = sum(1 for x in rows if x["touched"])
     mauzas_completed = sum(1 for x in rows if x["status"] == "Completed")
 
     # ------------------------------------------------------------------

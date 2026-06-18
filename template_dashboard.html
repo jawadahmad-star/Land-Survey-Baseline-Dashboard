@@ -556,7 +556,7 @@ function renderAll(){
   document.getElementById('ov-callouts').innerHTML =
     callout('teal','🏙️','Urban Coverage', m.urban_done+' of '+m.urban_target+' urban interviews complete ('+pctOf(m.urban_done,m.urban_target)+'%).') +
     callout('amber','🌾','Rural Coverage', m.rural_done+' of '+m.rural_target+' rural interviews complete ('+pctOf(m.rural_done,m.rural_target)+'%).') +
-    callout('primary','🗺️','Mouza Reach', m.mauzas_started+' of '+m.n_target_mauzas+' sampled mouzas have at least one completed interview.') +
+    callout('primary','🗺️','Mouza Reach', m.mauzas_started+' of '+m.n_target_mauzas+' sampled mouzas have been reached by the field team ('+m.mauzas_completed+' fully completed).') +
     callout('navy','⏱️','Pace', 'Median interview takes '+m.avg_duration+' minutes across '+m.field_days+' field days.');
 
   // Overview charts
@@ -693,7 +693,7 @@ function renderMouzaTable(){
   let rows=D.mouza_table.filter(r=>{
     const hay=(r.mauza+r.tehsil).toUpperCase().replace(/\s/g,'');
     if(q && !hay.includes(q)) return false;
-    if(st==='started'){ if(r.total_done===0) return false; }
+    if(st==='started'){ if(!r.touched) return false; }
     else if(st!=='all' && r.status!==st) return false;
     if(th!=='all' && r.tehsil!==th) return false;
     return true;
