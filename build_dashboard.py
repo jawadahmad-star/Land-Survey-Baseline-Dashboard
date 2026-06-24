@@ -73,6 +73,13 @@ def main():
     # Completed interviews + urban/rural tagging via prefill track_cat
     # ------------------------------------------------------------------
     comp = df[df["status_survey"] == COMPLETE_STATUS].copy()
+    # De-duplicate on hh_id: a household interview submitted/synced more than
+    # once must count only ONCE, otherwise the completed total is inflated.
+    # Keep the earliest submission (by starttime) for each hh_id.
+    if "hh_id" in comp.columns:
+        if "starttime" in comp.columns:
+            comp = comp.sort_values("starttime")
+        comp = comp.drop_duplicates(subset="hh_id", keep="first")
     comp["pid"] = comp["person_id"].astype(str).str.replace(r"\.0$", "", regex=True)
     prefill["pid"] = prefill["person_id"].astype(str)
     pmap = prefill[["pid", "track_cat"]].drop_duplicates("pid")
