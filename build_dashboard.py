@@ -25,6 +25,7 @@ import pyreadstat
 BASE = Path(__file__).resolve().parent
 DTA_FILE      = BASE / "Sargodha - Land Survey Baseline.dta"
 IV_FILE       = BASE / "Female - Land Survey - Enumerator Script.dta"
+IV_ASSIGN_FILE = BASE / "prefilled_data_treatmenr_assigned_intervention.xlsx"
 TARGET_FILE   = BASE / "target_file.xlsx"
 PREFILL_FILE  = BASE / "prefill_data_PULSE.xlsx"
 TEMPLATE_FILE = BASE / "template_dashboard.html"
@@ -90,6 +91,28 @@ def build_intervention(comp, n_complete):
     n_iv_submissions = len(ivdf)
     eligible = int(n_complete)
 
+    # ---- Authoritative treatment assignment (from the assignment sheet) -----
+    # The survey-recorded `treat` field has blanks and a few mismatches; the
+    # assignment file is the source of truth for which arm each household was
+    # ASSIGNED to. Join completed visits to it by hh_id so the treatment
+    # breakdown reflects the assigned arm (T1 = women only, T2 = women + men).
+    iv_hh = ivc["hh_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+    if IV_ASSIGN_FILE.exists():
+        asg = pd.read_excel(IV_ASSIGN_FILE)
+        asg["hh_id"] = asg["hh_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        asg = asg.drop_duplicates("hh_id")
+        t_map = asg.set_index("hh_id")["treatment"].astype(str).str.strip()
+        a_map = asg.set_index("hh_id")["treatment_arm"].astype(str).str.strip()
+        ivc = ivc.assign(
+            treat_asg=iv_hh.map(t_map).fillna("Unassigned"),
+            arm_asg=iv_hh.map(a_map).fillna("Not assigned"),
+        )
+    else:
+        ivc = ivc.assign(
+            treat_asg=ivc["treat"].astype(str).str.strip().replace({"": "Unassigned"}),
+            arm_asg=ivc["treat_arm"].astype(str).str.strip().replace({"": "Not assigned"}),
+        )
+
     # ---- Eligible pool & intervention done, per mouza (from baseline comp) --
     # Drop records with a missing/blank mauza (a few baseline rows have no
     # mauza/tehsil recorded — they must not appear as a phantom mouza).
@@ -132,15 +155,12 @@ def build_intervention(comp, n_complete):
     daily_list = [{"date": k, "count": v} for k, v in sorted(daily.items())]
     last_date = daily_list[-1]["date"] if daily_list else ""
 
-    # ---- Treatment assignment (T1 / T2) ----
-    treat = vc(ivc["treat"].astype(str).str.strip().replace({"": "Unassigned"})) \
-        if "treat" in ivc.columns else []
+    # ---- Treatment assignment (T1 / T2) — from the assignment sheet ----
+    treat = vc(ivc["treat_asg"])
 
-    # ---- Treatment arm (women only / women + men) ----
-    arm_raw = (ivc["treat_arm"].astype(str).str.strip()
-               .replace({"": "Not recorded", "nan": "Not recorded"})) \
-        if "treat_arm" in ivc.columns else pd.Series(dtype=str)
-    arm = [{"label": k, "value": int(v)} for k, v in arm_raw.value_counts().items()]
+    # ---- Treatment arm (women only / women + men) — from the assignment sheet
+    arm = [{"label": k, "value": int(v)}
+           for k, v in ivc["arm_asg"].value_counts().items()]
 
     # ---- Substantive awareness indicators (intervention questions) ----
     # Explicit, clean label maps (the .dta stores apostrophes as mojibake).
@@ -175,8 +195,8 @@ def build_intervention(comp, n_complete):
             "field_days": len(daily_list),
             "last_date": last_date,
             "avg_duration": avg_dur,
-            "n_t1": int(ivc["treat"].astype(str).str.strip().eq("T1").sum()) if "treat" in ivc.columns else 0,
-            "n_t2": int(ivc["treat"].astype(str).str.strip().eq("T2").sum()) if "treat" in ivc.columns else 0,
+            "n_t1": int(ivc["treat_asg"].eq("T1").sum()),
+            "n_t2": int(ivc["treat_asg"].eq("T2").sum()),
         },
         "daily": daily_list,
         "treat": treat,
