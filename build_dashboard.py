@@ -26,6 +26,7 @@ BASE = Path(__file__).resolve().parent
 DTA_FILE      = BASE / "Sargodha - Land Survey Baseline.dta"
 IV_FILE       = BASE / "Female - Land Survey - Enumerator Script.dta"
 IV_ASSIGN_FILE = BASE / "prefilled_data_treatmenr_assigned_intervention.xlsx"
+TREATMENT_FILE = BASE / "All mauzas Treatment.xlsx"
 TARGET_FILE   = BASE / "target_file.xlsx"
 PREFILL_FILE  = BASE / "prefill_data_PULSE.xlsx"
 TEMPLATE_FILE = BASE / "template_dashboard.html"
@@ -87,9 +88,26 @@ def build_intervention(comp, n_complete):
             ivc = ivc.sort_values("starttime")
         ivc = ivc.drop_duplicates(subset="hh_id", keep="first")
 
+    # ---- Restrict scope to REVEALED TREATMENT (T1/T2) mauzas ----------------
+    # Treatment is revealed per mouza in `All mauzas Treatment.xlsx`. Mauzas
+    # assigned to Control (C) do NOT receive the intervention, and mauzas whose
+    # arm has not been revealed yet are out of scope for now. So both the
+    # eligible pool (baseline-completed households, the denominator) and the
+    # intervention-done set are restricted to the revealed T1/T2 mauzas. As more
+    # arms are revealed in the sheet, this scope expands automatically.
+    if TREATMENT_FILE.exists():
+        tr = pd.read_excel(TREATMENT_FILE)
+        tr["_arm"] = tr["treatment_arm"].astype(str).str.strip().str.upper()
+        treat_mauzas = set(
+            tr.loc[tr["_arm"].isin(["T1", "T2"]), "Mauza"].astype(str).str.strip()
+        )
+        comp = comp[comp["mauza"].astype(str).str.strip().isin(treat_mauzas)].copy()
+        ivc = ivc[ivc["mauza"].astype(str).str.strip().isin(treat_mauzas)].copy()
+        ivdf = ivdf[ivdf["mauza"].astype(str).str.strip().isin(treat_mauzas)].copy()
+
     n_iv = len(ivc)
     n_iv_submissions = len(ivdf)
-    eligible = int(n_complete)
+    eligible = int(len(comp))
 
     # ---- Authoritative treatment assignment (from the assignment sheet) -----
     # The survey-recorded `treat` field has blanks and a few mismatches; the
