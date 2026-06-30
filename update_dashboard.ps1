@@ -6,8 +6,15 @@
  What it does:
    1. (Optional) Re-exports the latest data files into this folder.
    2. Rebuilds index.html from the raw data via build_dashboard.py
+      - Baseline tabs (Overview, Profile, Land, Empowerment, Vignette, Mouza)
+      - Intervention tab (from "Female - Land Survey - Enumerator Script.dta";
+        eligible pool = baseline-completed households, tracked by mouza)
    3. Commits and pushes the refreshed dashboard to GitHub, which
       auto-deploys to landsurvey.rs.org.pk
+
+ NOTE: All raw data files (*.dta / *.csv / *.xlsx) are git-ignored. Only the
+ rendered index.html + build sources are pushed - no respondent PII leaves
+ this machine.
 
  Usage (manual):
    powershell -ExecutionPolicy Bypass -File .\update_dashboard.ps1

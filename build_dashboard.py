@@ -24,6 +24,7 @@ import pyreadstat
 # ----------------------------------------------------------------------------
 BASE = Path(__file__).resolve().parent
 DTA_FILE      = BASE / "Sargodha - Land Survey Baseline.dta"
+IV_FILE       = BASE / "Female - Land Survey - Enumerator Script.dta"
 TARGET_FILE   = BASE / "target_file.xlsx"
 PREFILL_FILE  = BASE / "prefill_data_PULSE.xlsx"
 TEMPLATE_FILE = BASE / "template_dashboard.html"
@@ -58,6 +59,132 @@ def mean_scale(series):
     s = pd.to_numeric(series, errors="coerce")
     s = s[s <= 5]                     # guard against 666/999 codes
     return round(float(s.mean()), 2) if len(s.dropna()) else 0.0
+
+
+def build_intervention(comp, n_complete):
+    """Compute the Intervention tab payload.
+
+    `comp` is the de-duplicated, completed BASELINE dataframe (the eligible
+    pool — only households whose baseline was completed receive the
+    intervention). `n_complete` is len(comp), the total eligible households.
+    """
+    out = {
+        "available": False,
+        "meta": {}, "daily": [], "treat": [], "arm": [],
+        "awareness": [], "knows_listed": [], "knows_fard": [],
+        "enumerators": [], "mauza_table": [],
+    }
+    if not IV_FILE.exists():
+        return out
+
+    ivdf, ivmeta = pyreadstat.read_dta(str(IV_FILE))
+
+    # Completed intervention visits, de-duplicated on hh_id (earliest start)
+    ivc = ivdf[ivdf["status_survey"] == COMPLETE_STATUS].copy()
+    if "hh_id" in ivc.columns:
+        if "starttime" in ivc.columns:
+            ivc = ivc.sort_values("starttime")
+        ivc = ivc.drop_duplicates(subset="hh_id", keep="first")
+
+    n_iv = len(ivc)
+    n_iv_submissions = len(ivdf)
+    eligible = int(n_complete)
+
+    # ---- Eligible pool & intervention done, per mouza (from baseline comp) --
+    elig_by_mauza = comp[comp["mauza"].notna()].groupby("mauza").size()
+    tehsil_by_mauza = (comp.dropna(subset=["mauza"])
+                       .groupby("mauza")["tehsil"]
+                       .agg(lambda s: s.mode().iat[0] if len(s.mode()) else ""))
+    done_by_mauza = ivc[ivc["mauza"].notna()].groupby("mauza").size()
+
+    mauza_rows = []
+    for mauza, elig in elig_by_mauza.items():
+        elig = int(elig)
+        done = int(done_by_mauza.get(mauza, 0))
+        pct = round(100 * done / elig, 1) if elig else 0.0
+        if elig and done >= elig:
+            status = "Completed"
+        elif done > 0:
+            status = "In Progress"
+        else:
+            status = "Not Started"
+        mauza_rows.append({
+            "mauza": mauza,
+            "tehsil": tehsil_by_mauza.get(mauza, ""),
+            "done": done, "eligible": elig,
+            "touched": done > 0, "pct": pct, "status": status,
+        })
+    # started (any intervention) first, by completion desc; rest after
+    mauza_rows.sort(key=lambda x: (not x["touched"], -x["done"], -x["pct"]))
+
+    mauzas_reached = sum(1 for x in mauza_rows if x["touched"])
+    mauzas_done = sum(1 for x in mauza_rows if x["status"] == "Completed")
+
+    # ---- Daily intervention visits ----
+    daily = {}
+    if "starttime" in ivc.columns:
+        st = pd.to_datetime(ivc["starttime"], errors="coerce")
+        for d in st.dropna().dt.date:
+            daily[d.isoformat()] = daily.get(d.isoformat(), 0) + 1
+    daily_list = [{"date": k, "count": v} for k, v in sorted(daily.items())]
+    last_date = daily_list[-1]["date"] if daily_list else ""
+
+    # ---- Treatment assignment (T1 / T2) ----
+    treat = vc(ivc["treat"].astype(str).str.strip().replace({"": "Unassigned"})) \
+        if "treat" in ivc.columns else []
+
+    # ---- Treatment arm (women only / women + men) ----
+    arm_raw = (ivc["treat_arm"].astype(str).str.strip()
+               .replace({"": "Not recorded", "nan": "Not recorded"})) \
+        if "treat_arm" in ivc.columns else pd.Series(dtype=str)
+    arm = [{"label": k, "value": int(v)} for k, v in arm_raw.value_counts().items()]
+
+    # ---- Substantive awareness indicators (intervention questions) ----
+    # Explicit, clean label maps (the .dta stores apostrophes as mojibake).
+    AWARE_LAB = {1: "Knows the initiative", 2: "Never heard of it",
+                 3: "Heard of it, knows nothing"}
+    YESNO_LAB = {1: "Yes", 2: "No"}
+    FARD_LAB  = {1: "Yes", 2: "No", 88: "Refused", 99: "Don't know"}
+    awareness    = vc(ivc["p5_q5"],      AWARE_LAB, dropna=False) if "p5_q5" in ivc.columns else []
+    knows_listed = vc(ivc["part3_q2_2"], YESNO_LAB, dropna=False) if "part3_q2_2" in ivc.columns else []
+    knows_fard   = vc(ivc["fard_intro"], FARD_LAB,  dropna=False) if "fard_intro" in ivc.columns else []
+
+    # ---- Enumerators ----
+    if "enum_label" in ivc.columns:
+        ie = ivc["enum_label"].astype(str).replace({"": "—", "nan": "—"}).value_counts().head(12)
+        enumerators = [{"label": k, "value": int(v)} for k, v in ie.items()]
+    else:
+        enumerators = []
+
+    dur = pd.to_numeric(ivc["duration"], errors="coerce") / 60.0 if "duration" in ivc.columns else pd.Series(dtype=float)
+    avg_dur = round(float(dur.median()), 0) if len(dur.dropna()) else 0
+
+    out.update({
+        "available": True,
+        "meta": {
+            "n_iv": n_iv,
+            "n_iv_submissions": n_iv_submissions,
+            "eligible": eligible,
+            "pct": round(100 * n_iv / eligible, 1) if eligible else 0.0,
+            "mauzas_reached": mauzas_reached,
+            "mauzas_done": mauzas_done,
+            "mauzas_eligible": int(len(mauza_rows)),
+            "field_days": len(daily_list),
+            "last_date": last_date,
+            "avg_duration": avg_dur,
+            "n_t1": int(ivc["treat"].astype(str).str.strip().eq("T1").sum()) if "treat" in ivc.columns else 0,
+            "n_t2": int(ivc["treat"].astype(str).str.strip().eq("T2").sum()) if "treat" in ivc.columns else 0,
+        },
+        "daily": daily_list,
+        "treat": treat,
+        "arm": arm,
+        "awareness": awareness,
+        "knows_listed": knows_listed,
+        "knows_fard": knows_fard,
+        "enumerators": enumerators,
+        "mauza_table": mauza_rows,
+    })
+    return out
 
 
 def main():
@@ -284,6 +411,16 @@ def main():
     field_days = len(daily_list)
 
     # ------------------------------------------------------------------
+    # INTERVENTION  (Female Land Survey — Enumerator Script)
+    # ------------------------------------------------------------------
+    # Only baseline-COMPLETED households are eligible for the intervention,
+    # so the eligible pool (the denominator) is the de-duplicated set of
+    # completed baseline households — both overall and per mouza. We track
+    # how many of those eligible households have so far received the
+    # intervention treatment visit.
+    intervention = build_intervention(comp, n_complete)
+
+    # ------------------------------------------------------------------
     # Assemble payload
     # ------------------------------------------------------------------
     data = {
@@ -335,6 +472,7 @@ def main():
         "always_village": always_village,
         "vignette": vignette,
         "mouza_table": rows,
+        "intervention": intervention,
     }
 
     # ------------------------------------------------------------------
@@ -351,6 +489,11 @@ def main():
     print(f"     District target      : {total_target}  ({urban_target} urban / {rural_target} rural)")
     print(f"     Mauzas started       : {mauzas_started} / {n_target_mauzas}")
     print(f"     Last field date      : {data['meta']['last_date']}")
+    if intervention["available"]:
+        im = intervention["meta"]
+        print(f"     Intervention done    : {im['n_iv']} / {im['eligible']} eligible "
+              f"({im['pct']}%)  ·  T1 {im['n_t1']} / T2 {im['n_t2']}  ·  "
+              f"{im['mauzas_reached']} mauzas reached")
 
 
 if __name__ == "__main__":

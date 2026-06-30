@@ -211,6 +211,7 @@
       <button class="nav-tab" onclick="showPanel('empower',this)">⚖️ Empowerment</button>
       <button class="nav-tab" onclick="showPanel('vignette',this)">🧑‍⚖️ Land Dispute Vignette</button>
       <button class="nav-tab" onclick="showPanel('mouza',this)">🗺️ Mouza Completion</button>
+      <button class="nav-tab" onclick="showPanel('intervention',this)">📣 Intervention</button>
     </nav>
   </div>
 </div>
@@ -409,6 +410,91 @@
       </table>
     </div>
     <p class="footnote">Urban = respondents tracked in the city; Rural = respondents tracked in the village (per the PULSE sampling tracker). Completion % = total completed ÷ mouza target. Sorted by completion by default.</p>
+  </div>
+
+  <!-- INTERVENTION -->
+  <div class="panel" id="panel-intervention">
+    <div class="section-header">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Intervention Completion Tracker</h2>
+        <p>Progress of the women's land-rights intervention. Only households whose <strong>baseline interview was completed</strong> are eligible for the intervention, so all progress here is measured against that eligible pool — overall, by treatment arm, and mouza-by-mouza.</p>
+      </div>
+    </div>
+    <div class="kpi-grid" id="iv-kpis"></div>
+    <div class="callout-row" id="iv-callouts"></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card full">
+        <h3>Daily Intervention Visits</h3>
+        <div class="chart-desc">Completed intervention visits submitted per field day</div>
+        <div class="chart-wrap"><canvas id="chartIvDaily"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid cols-3">
+      <div class="chart-card">
+        <h3>Progress vs Eligible Pool</h3>
+        <div class="chart-desc">Intervention visits completed against eligible (baseline-completed) households</div>
+        <div class="chart-wrap"><canvas id="chartIvProgress"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Treatment Assignment</h3>
+        <div class="chart-desc">Completed visits by treatment group (T1 vs T2)</div>
+        <div class="chart-wrap"><canvas id="chartIvTreat"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Treatment Arm</h3>
+        <div class="chart-desc">Who received the treatment — women only vs women &amp; men together</div>
+        <div class="chart-wrap"><canvas id="chartIvArm"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid cols-3">
+      <div class="chart-card"><h3>Aware of Govt Partition Initiative</h3><div class="chart-desc">Heard of the Punjab "Aik Waqfi" land-partition initiative before the visit</div><div class="chart-wrap"><canvas id="chartIvAware"></canvas></div></div>
+      <div class="chart-card"><h3>Knows Land Listed Under Her Name</h3><div class="chart-desc">Knows how much land is recorded under her name in the government record</div><div class="chart-wrap"><canvas id="chartIvListed"></canvas></div></div>
+      <div class="chart-card"><h3>Knows What a <em>Fard</em> Is</h3><div class="chart-desc">Familiar with the land-record document (fard)</div><div class="chart-wrap"><canvas id="chartIvFard"></canvas></div></div>
+    </div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card full">
+        <h3>Intervention Visits by Enumerator</h3>
+        <div class="chart-desc">Completed intervention visits per enumerator (top 12)</div>
+        <div class="chart-wrap tall"><canvas id="chartIvEnum"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-header-accent"></div>
+      <div>
+        <h2>Mouza Intervention Status</h2>
+        <p>Intervention visits completed against the eligible (baseline-completed) households in each mouza. Search by mouza or tehsil, filter by status, and click any column to sort.</p>
+      </div>
+    </div>
+    <div class="mz-toolbar">
+      <input type="text" id="iv-search" class="mz-search" placeholder="🔍  Search mouza or tehsil…" oninput="renderIvTable()">
+      <select id="iv-status" class="mz-filter" onchange="renderIvTable()">
+        <option value="started" selected>Started only (active mouzas)</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+        <option value="Not Started">Not Started</option>
+        <option value="all">All eligible mouzas</option>
+      </select>
+      <select id="iv-tehsil" class="mz-filter" onchange="renderIvTable()"></select>
+      <span class="mz-count" id="iv-count"></span>
+    </div>
+    <div class="mz-table-wrap">
+      <table class="mz-table" id="iv-table">
+        <thead>
+          <tr>
+            <th data-sort="mauza">Mouza <span class="arrow"></span></th>
+            <th data-sort="tehsil">Tehsil <span class="arrow"></span></th>
+            <th class="num" data-sort="done">Intervention Done <span class="arrow"></span></th>
+            <th class="num" data-sort="eligible">Eligible (Baseline) <span class="arrow"></span></th>
+            <th data-sort="pct">Completion <span class="arrow">▼</span></th>
+            <th data-sort="status">Status <span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="iv-body"></tbody>
+      </table>
+    </div>
+    <p class="footnote">Eligible households = baseline interviews completed in each mouza (only these receive the intervention). Completion % = intervention visits ÷ eligible households. Sorted by completion by default.</p>
   </div>
 
 </div><!-- /main -->
@@ -627,6 +713,9 @@ function renderAll(){
 
   // ---- Mouza ----
   buildMouzaPanel();
+
+  // ---- Intervention ----
+  buildIvPanel();
 }
 
 function pctOf(a,b){ return b? Math.round(100*a/b):0; }
@@ -715,6 +804,92 @@ function renderMouzaTable(){
     </tr>`;
   }).join('');
   document.getElementById('mz-count').textContent = rows.length + ' of ' + D.mouza_table.length + ' mouzas';
+}
+
+// ============================================================
+//  INTERVENTION
+// ============================================================
+let ivSort = {key:'pct', dir:-1};
+function buildIvPanel(){
+  const IV = DASHBOARD_DATA.intervention;
+  const panel = document.getElementById('panel-intervention');
+  const tabBtn = document.querySelector('.nav-tab[onclick*="intervention"]');
+  if(!IV || !IV.available){
+    if(tabBtn) tabBtn.style.display='none';
+    return;
+  }
+  const m = IV.meta;
+
+  // ---- KPIs ----
+  document.getElementById('iv-kpis').innerHTML =
+    kpi('📣', m.n_iv.toLocaleString(), 'Intervention Visits Done', m.pct+'% of '+m.eligible.toLocaleString()+' eligible', 'up', 'green') +
+    kpi('👥', m.eligible.toLocaleString(), 'Eligible Households', 'Baseline interviews completed', 'navy', 'navy') +
+    kpi('🅰️', m.n_t1.toLocaleString(), 'Treatment 1 (T1)', 'Completed T1 visits', 'navy', 'teal') +
+    kpi('🅱️', m.n_t2.toLocaleString(), 'Treatment 2 (T2)', 'Completed T2 visits', 'navy', 'purple') +
+    kpi('🗺️', m.mauzas_reached+' / '+m.mauzas_eligible, 'Mouzas Reached', m.mauzas_done+' fully covered', 'navy', 'amber') +
+    kpi('⏱️', m.avg_duration, 'Median Visit (min)', m.field_days+' field days · last '+(m.last_date||''), 'up');
+
+  document.getElementById('iv-callouts').innerHTML =
+    callout('primary','📣','Intervention Reach', m.n_iv+' of '+m.eligible+' eligible (baseline-completed) households have received the intervention so far ('+m.pct+'%).') +
+    callout('teal','🅰️','Treatment Balance', 'T1: '+m.n_t1+' visits · T2: '+m.n_t2+' visits completed.') +
+    callout('amber','🗺️','Mouza Coverage', m.mauzas_reached+' of '+m.mauzas_eligible+' eligible mouzas reached ('+m.mauzas_done+' fully covered).') +
+    callout('navy','⏱️','Pace', 'Median intervention visit takes '+m.avg_duration+' minutes across '+m.field_days+' field days.');
+
+  // ---- Charts ----
+  lineChart('chartIvDaily', IV.daily);
+  progressDonut('chartIvProgress', m.n_iv, m.eligible);
+  donutChart('chartIvTreat', IV.treat, [TEAL, PURPLE, '#94a3b8']);
+  donutChart('chartIvArm', IV.arm, [NAVY, AMBER, '#94a3b8']);
+  if(IV.awareness && IV.awareness.length)   donutChart('chartIvAware',  IV.awareness,   [GREEN, RED, AMBER, '#94a3b8']);
+  if(IV.knows_listed && IV.knows_listed.length) donutChart('chartIvListed', IV.knows_listed, [GREEN, RED, '#94a3b8']);
+  if(IV.knows_fard && IV.knows_fard.length) donutChart('chartIvFard',   IV.knows_fard,  [GREEN, RED, AMBER, '#94a3b8']);
+  if(IV.enumerators && IV.enumerators.length) barChart('chartIvEnum', IV.enumerators, NAVY, true);
+
+  // ---- Table ----
+  const tehsils=[...new Set(IV.mauza_table.map(r=>r.tehsil))].filter(Boolean).sort();
+  const sel=document.getElementById('iv-tehsil');
+  sel.innerHTML='<option value="all">All tehsils</option>'+tehsils.map(t=>`<option value="${t}">${t}</option>`).join('');
+  document.querySelectorAll('#iv-table th').forEach(th=>{
+    th.onclick=()=>{ const k=th.dataset.sort; if(ivSort.key===k) ivSort.dir*=-1; else {ivSort.key=k; ivSort.dir=(k==='mauza'||k==='tehsil'||k==='status')?1:-1;} updateIvArrows(); renderIvTable(); };
+  });
+  updateIvArrows();
+  renderIvTable();
+}
+function updateIvArrows(){
+  document.querySelectorAll('#iv-table th').forEach(th=>{
+    const a=th.querySelector('.arrow');
+    a.textContent = (th.dataset.sort===ivSort.key) ? (ivSort.dir===1?'▲':'▼') : '';
+  });
+}
+function renderIvTable(){
+  const IV=DASHBOARD_DATA.intervention;
+  const q=(document.getElementById('iv-search').value||'').toUpperCase().replace(/\s/g,'');
+  const st=document.getElementById('iv-status').value;
+  const th=document.getElementById('iv-tehsil').value;
+  let rows=IV.mauza_table.filter(r=>{
+    const hay=(r.mauza+r.tehsil).toUpperCase().replace(/\s/g,'');
+    if(q && !hay.includes(q)) return false;
+    if(st==='started'){ if(!r.touched) return false; }
+    else if(st!=='all' && r.status!==st) return false;
+    if(th!=='all' && r.tehsil!==th) return false;
+    return true;
+  });
+  const k=ivSort.key, dir=ivSort.dir;
+  rows.sort((a,b)=>{ let x=a[k],y=b[k]; if(typeof x==='string'){return x.localeCompare(y)*dir;} return (x-y)*dir; });
+
+  const body=document.getElementById('iv-body');
+  body.innerHTML = rows.map(r=>{
+    const pct=Math.min(r.pct,100);
+    return `<tr>
+      <td><span class="mz-mauza">${r.mauza}</span></td>
+      <td><span class="mz-tehsil">${r.tehsil}</span></td>
+      <td class="num"><span class="mz-frac"><span class="done">${r.done}</span></span></td>
+      <td class="num"><span class="mz-frac"><span class="tgt">${r.eligible}</span></span></td>
+      <td><span class="mz-bar"><span style="width:${pct}%;background:${barColor(r.pct)}"></span></span><span class="mz-pct" style="color:${barColor(r.pct)}">${r.pct}%</span></td>
+      <td>${statusBadge(r.status)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('iv-count').textContent = rows.length + ' of ' + IV.mauza_table.length + ' eligible mouzas';
 }
 </script>
 </body>
