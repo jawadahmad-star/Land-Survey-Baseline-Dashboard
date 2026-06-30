@@ -196,6 +196,20 @@ def main():
     # ------------------------------------------------------------------
     df, meta = pyreadstat.read_dta(str(DTA_FILE))
     vlabels = meta.variable_value_labels
+
+    # ------------------------------------------------------------------
+    # Data correction: a couple of completed households were submitted with
+    # a blank mauza/tehsil. Per the field team they belong to CHAKNO23JANUBI
+    # (Sargodha). Patch here so they count correctly in both the baseline
+    # Mouza tracker and the Intervention eligible pool.
+    # ------------------------------------------------------------------
+    MAUZA_FIX = {"4365": "CHAKNO23JANUBI", "4342": "CHAKNO23JANUBI"}
+    if "hh_id" in df.columns:
+        _hid = df["hh_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        for _k, _v in MAUZA_FIX.items():
+            _sel = _hid == _k
+            df.loc[_sel, "mauza"] = _v
+            df.loc[_sel, "tehsil"] = "SARGODHA"
     target = pd.read_excel(TARGET_FILE)
     prefill = pd.read_excel(PREFILL_FILE)
 
