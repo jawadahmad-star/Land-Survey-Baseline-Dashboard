@@ -91,11 +91,14 @@ def build_intervention(comp, n_complete):
     eligible = int(n_complete)
 
     # ---- Eligible pool & intervention done, per mouza (from baseline comp) --
-    elig_by_mauza = comp[comp["mauza"].notna()].groupby("mauza").size()
-    tehsil_by_mauza = (comp.dropna(subset=["mauza"])
-                       .groupby("mauza")["tehsil"]
+    # Drop records with a missing/blank mauza (a few baseline rows have no
+    # mauza/tehsil recorded — they must not appear as a phantom mouza).
+    comp_m = comp[comp["mauza"].notna() & (comp["mauza"].astype(str).str.strip() != "")]
+    ivc_m  = ivc[ivc["mauza"].notna() & (ivc["mauza"].astype(str).str.strip() != "")]
+    elig_by_mauza = comp_m.groupby("mauza").size()
+    tehsil_by_mauza = (comp_m.groupby("mauza")["tehsil"]
                        .agg(lambda s: s.mode().iat[0] if len(s.mode()) else ""))
-    done_by_mauza = ivc[ivc["mauza"].notna()].groupby("mauza").size()
+    done_by_mauza = ivc_m.groupby("mauza").size()
 
     mauza_rows = []
     for mauza, elig in elig_by_mauza.items():
