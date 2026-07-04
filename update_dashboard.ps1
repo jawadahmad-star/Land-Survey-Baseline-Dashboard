@@ -7,8 +7,9 @@
    1. (Optional) Re-exports the latest data files into this folder.
    2. Rebuilds index.html from the raw data via build_dashboard.py
       - Baseline tabs (Overview, Profile, Land, Empowerment, Vignette, Mouza)
-      - Intervention tab (from "Female - Land Survey - Enumerator Script.dta";
-        eligible pool = baseline-completed households, tracked by mouza)
+      - Intervention tab (visits from "Female - Land Survey - Enumerator
+        Script.dta"; eligible pool = households listed in the assignment
+        sheet "prefilled_data_treatmenr_assigned_intervention.xlsx")
    3. Commits and pushes the refreshed dashboard to GitHub, which
       auto-deploys to landsurvey.rs.org.pk
 
@@ -62,6 +63,25 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ---------------------------------------------------------------------------
+# 2b. Verify required data files are present
+#     (a missing file must fail loudly - never silently build a stale/partial
+#      dashboard. This is how the Intervention tab once froze on old data.)
+# ---------------------------------------------------------------------------
+$required = @(
+    "Sargodha - Land Survey Baseline.dta",                       # baseline tabs
+    "Female - Land Survey - Enumerator Script.dta",              # intervention visits
+    "prefilled_data_treatmenr_assigned_intervention.xlsx",       # intervention eligible pool + arm
+    "target_file.xlsx",                                          # mouza targets
+    "prefill_data_PULSE.xlsx"                                    # urban/rural tagging
+)
+$missing = $required | Where-Object { -not (Test-Path (Join-Path $ScriptDir $_)) }
+if ($missing) {
+    throw ("Required data file(s) missing - export the latest data first:`n  - " +
+           ($missing -join "`n  - "))
+}
+Log "All required data files present."
+
+# ---------------------------------------------------------------------------
 # 3. Rebuild the dashboard
 # ---------------------------------------------------------------------------
 Log "Rebuilding dashboard (build_dashboard.py)..."
@@ -74,20 +94,27 @@ if ($NoPush) { Log "NoPush set - skipping git. Done."; return }
 
 # ---------------------------------------------------------------------------
 # 4. Commit & push to GitHub
+#    git prints harmless notices (e.g. "LF will be replaced by CRLF") to
+#    stderr; under $ErrorActionPreference='Stop' those would abort the script
+#    before the commit. Relax to 'Continue' here and gate on $LASTEXITCODE,
+#    which is git's real success/failure signal.
 # ---------------------------------------------------------------------------
 $git = (Get-Command git -ErrorAction SilentlyContinue)
 if (-not $git) { throw "git was not found on PATH. Install Git and retry." }
 
+$ErrorActionPreference = "Continue"
+
 # stage only dashboard outputs/sources (never the confidential raw data)
-git add index.html template_dashboard.html build_dashboard.py update_dashboard.ps1 README.md .gitignore 2>$null
+git add index.html template_dashboard.html build_dashboard.py update_dashboard.ps1 README.md .gitignore 2>&1 | Out-Null
 
 $pending = git status --porcelain
 if ([string]::IsNullOrWhiteSpace($pending)) {
     Log "No changes to commit. Dashboard already up to date."
 } else {
-    git commit -m "Daily data refresh - $stamp" | Out-Null
+    git commit -m "Daily data refresh - $stamp" 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "git commit failed." }
     Log "Committed changes."
-    git push origin HEAD
+    git push origin HEAD 2>&1 | ForEach-Object { Log $_ }
     if ($LASTEXITCODE -ne 0) { throw "git push failed. Check credentials / network." }
     Log "Pushed to GitHub. Live site will update shortly."
 }

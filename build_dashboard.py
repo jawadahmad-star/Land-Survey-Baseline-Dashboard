@@ -26,7 +26,6 @@ BASE = Path(__file__).resolve().parent
 DTA_FILE      = BASE / "Sargodha - Land Survey Baseline.dta"
 IV_FILE       = BASE / "Female - Land Survey - Enumerator Script.dta"
 IV_ASSIGN_FILE = BASE / "prefilled_data_treatmenr_assigned_intervention.xlsx"
-TREATMENT_FILE = BASE / "All mauzas Treatment.xlsx"
 TARGET_FILE   = BASE / "target_file.xlsx"
 PREFILL_FILE  = BASE / "prefill_data_PULSE.xlsx"
 TEMPLATE_FILE = BASE / "template_dashboard.html"
@@ -66,9 +65,18 @@ def mean_scale(series):
 def build_intervention(comp, n_complete):
     """Compute the Intervention tab payload.
 
-    `comp` is the de-duplicated, completed BASELINE dataframe (the eligible
-    pool — only households whose baseline was completed receive the
-    intervention). `n_complete` is len(comp), the total eligible households.
+    Scope & eligibility come from the treatment ASSIGNMENT sheet
+    (`prefilled_data_treatmenr_assigned_intervention.xlsx`) — the single
+    source of truth for exactly which households were assigned to the
+    intervention (arm T1 = women only, T2 = women + men) and in which mouza.
+    The eligible pool (the denominator) is therefore the set of ASSIGNED
+    households; `done` is how many of them have so far received the
+    intervention visit. This deliberately does NOT depend on any separate
+    "All mauzas Treatment.xlsx" file — if that file is absent the scope must
+    never silently fall back to "everyone".
+
+    `comp` is the de-duplicated, completed BASELINE dataframe, used only to
+    label each mouza with its tehsil.
     """
     out = {
         "available": False,
@@ -77,69 +85,62 @@ def build_intervention(comp, n_complete):
         "enumerators": [], "mauza_table": [],
     }
     if not IV_FILE.exists():
+        print(f"[WARN] Intervention data file missing: {IV_FILE.name} "
+              f"- Intervention tab disabled", file=sys.stderr)
         return out
+    if not IV_ASSIGN_FILE.exists():
+        print(f"[WARN] Intervention assignment file missing: {IV_ASSIGN_FILE.name} "
+              f"- Intervention tab disabled (cannot determine eligible pool)",
+              file=sys.stderr)
+        return out
+
+    def _hid(s):
+        return s.astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
 
     ivdf, ivmeta = pyreadstat.read_dta(str(IV_FILE))
 
-    # Completed intervention visits, de-duplicated on hh_id (earliest start)
-    ivc = ivdf[ivdf["status_survey"] == COMPLETE_STATUS].copy()
-    if "hh_id" in ivc.columns:
-        if "starttime" in ivc.columns:
-            ivc = ivc.sort_values("starttime")
-        ivc = ivc.drop_duplicates(subset="hh_id", keep="first")
+    # ---- Treatment assignment = source of truth for scope & eligibility -----
+    # Which households were ASSIGNED to the intervention (and to which arm /
+    # mouza). Assigned households ARE the eligible pool. Households / mauzas
+    # that were never assigned are, by definition, out of scope.
+    asg = pd.read_excel(IV_ASSIGN_FILE)
+    asg["hh_id"] = _hid(asg["hh_id"])
+    asg = asg.drop_duplicates("hh_id")
+    asg["mauza_name"] = asg["mauza_name"].astype(str).str.strip()
+    assigned_hh = set(asg["hh_id"])
+    scope_mauzas = set(asg["mauza_name"])
+    mauza_of_hh = asg.set_index("hh_id")["mauza_name"]
+    t_map = asg.set_index("hh_id")["treatment"].astype(str).str.strip()
+    a_map = asg.set_index("hh_id")["treatment_arm"].astype(str).str.strip()
 
-    # ---- Restrict scope to REVEALED TREATMENT (T1/T2) mauzas ----------------
-    # Treatment is revealed per mouza in `All mauzas Treatment.xlsx`. Mauzas
-    # assigned to Control (C) do NOT receive the intervention, and mauzas whose
-    # arm has not been revealed yet are out of scope for now. So both the
-    # eligible pool (baseline-completed households, the denominator) and the
-    # intervention-done set are restricted to the revealed T1/T2 mauzas. As more
-    # arms are revealed in the sheet, this scope expands automatically.
-    if TREATMENT_FILE.exists():
-        tr = pd.read_excel(TREATMENT_FILE)
-        tr["_arm"] = tr["treatment_arm"].astype(str).str.strip().str.upper()
-        treat_mauzas = set(
-            tr.loc[tr["_arm"].isin(["T1", "T2"]), "Mauza"].astype(str).str.strip()
-        )
-        comp = comp[comp["mauza"].astype(str).str.strip().isin(treat_mauzas)].copy()
-        ivc = ivc[ivc["mauza"].astype(str).str.strip().isin(treat_mauzas)].copy()
-        ivdf = ivdf[ivdf["mauza"].astype(str).str.strip().isin(treat_mauzas)].copy()
+    # ---- Completed intervention visits, de-duplicated on hh_id (earliest) ---
+    ivc = ivdf[ivdf["status_survey"] == COMPLETE_STATUS].copy()
+    if "starttime" in ivc.columns:
+        ivc = ivc.sort_values("starttime")
+    ivc = ivc.drop_duplicates(subset="hh_id", keep="first")
+    ivc["_hid"] = _hid(ivc["hh_id"])
+    # keep only households that were actually ASSIGNED to the intervention
+    ivc = ivc[ivc["_hid"].isin(assigned_hh)].copy()
+    # count submissions within the intervention (assignment) mauzas only
+    ivdf = ivdf[ivdf["mauza"].astype(str).str.strip().isin(scope_mauzas)].copy()
+
+    # Assigned arm / mouza attached from the assignment sheet (authoritative;
+    # the survey-recorded `treat` field has blanks and a few mismatches).
+    ivc["treat_asg"] = ivc["_hid"].map(t_map).fillna("Unassigned")
+    ivc["arm_asg"]   = ivc["_hid"].map(a_map).fillna("Not assigned")
+    ivc["_mauza"]    = ivc["_hid"].map(mauza_of_hh)
 
     n_iv = len(ivc)
     n_iv_submissions = len(ivdf)
-    eligible = int(len(comp))
+    eligible = int(len(asg))
 
-    # ---- Authoritative treatment assignment (from the assignment sheet) -----
-    # The survey-recorded `treat` field has blanks and a few mismatches; the
-    # assignment file is the source of truth for which arm each household was
-    # ASSIGNED to. Join completed visits to it by hh_id so the treatment
-    # breakdown reflects the assigned arm (T1 = women only, T2 = women + men).
-    iv_hh = ivc["hh_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
-    if IV_ASSIGN_FILE.exists():
-        asg = pd.read_excel(IV_ASSIGN_FILE)
-        asg["hh_id"] = asg["hh_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
-        asg = asg.drop_duplicates("hh_id")
-        t_map = asg.set_index("hh_id")["treatment"].astype(str).str.strip()
-        a_map = asg.set_index("hh_id")["treatment_arm"].astype(str).str.strip()
-        ivc = ivc.assign(
-            treat_asg=iv_hh.map(t_map).fillna("Unassigned"),
-            arm_asg=iv_hh.map(a_map).fillna("Not assigned"),
-        )
-    else:
-        ivc = ivc.assign(
-            treat_asg=ivc["treat"].astype(str).str.strip().replace({"": "Unassigned"}),
-            arm_asg=ivc["treat_arm"].astype(str).str.strip().replace({"": "Not assigned"}),
-        )
-
-    # ---- Eligible pool & intervention done, per mouza (from baseline comp) --
-    # Drop records with a missing/blank mauza (a few baseline rows have no
-    # mauza/tehsil recorded — they must not appear as a phantom mouza).
+    # ---- Eligible (assigned) & intervention done, per mouza -----------------
+    elig_by_mauza = asg.groupby("mauza_name").size()
+    done_by_mauza = ivc.groupby("_mauza").size()
+    # tehsil label per mouza from the baseline frame (fallback blank)
     comp_m = comp[comp["mauza"].notna() & (comp["mauza"].astype(str).str.strip() != "")]
-    ivc_m  = ivc[ivc["mauza"].notna() & (ivc["mauza"].astype(str).str.strip() != "")]
-    elig_by_mauza = comp_m.groupby("mauza").size()
     tehsil_by_mauza = (comp_m.groupby("mauza")["tehsil"]
                        .agg(lambda s: s.mode().iat[0] if len(s.mode()) else ""))
-    done_by_mauza = ivc_m.groupby("mauza").size()
 
     mauza_rows = []
     for mauza, elig in elig_by_mauza.items():
