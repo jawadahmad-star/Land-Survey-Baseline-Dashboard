@@ -307,8 +307,27 @@ def main():
 
     # ------------------------------------------------------------------
     # Mouza completion table
+    #
+    # The Mouza Completion tab counts ONLY IDs present in the CURRENT prefill
+    # sampling frame (prefill_data_PULSE.xlsx). A handful of survey records
+    # carry person_ids from an OLDER prefill frame that is no longer in scope;
+    # those must not count toward a mauza's touched / completed totals. The one
+    # exception is the MAUZA_FIX households (blank person_id, patched above to
+    # CHAKNO23JANUBI) which the field team confirmed and we keep on purpose.
     # ------------------------------------------------------------------
-    done_by_mauza = comp.groupby("mauza").agg(
+    _prefill_pids = set(
+        prefill["person_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+    )
+
+    def _prefill_scope(frame):
+        pid = frame["person_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        hid = frame["hh_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        return pid.isin(_prefill_pids) | hid.isin(set(MAUZA_FIX))
+
+    comp_scope = comp[_prefill_scope(comp)]
+    df_scope = df[_prefill_scope(df)]
+
+    done_by_mauza = comp_scope.groupby("mauza").agg(
         urban_done=("is_urban", "sum"),
         rural_done=("is_rural", "sum"),
         total_done=("is_urban", "size"),
@@ -317,7 +336,7 @@ def main():
     # completed, locked/empty, refused, respondent died, etc.). This matches
     # the Touched_Mauza tracker (build_mauza_touch.py); a mauza can be touched
     # without a single completed interview yet.
-    touched_src = df[df["mauza"].notna() & (df["mauza"].astype(str).str.strip() != "")]
+    touched_src = df_scope[df_scope["mauza"].notna() & (df_scope["mauza"].astype(str).str.strip() != "")]
     touched_by_mauza = touched_src.groupby("mauza").size()
 
     # ------------------------------------------------------------------
