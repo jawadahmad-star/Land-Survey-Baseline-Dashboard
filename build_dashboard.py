@@ -319,9 +319,40 @@ def main():
     # without a single completed interview yet.
     touched_src = df[df["mauza"].notna() & (df["mauza"].astype(str).str.strip() != "")]
     touched_by_mauza = touched_src.groupby("mauza").size()
+
+    # ------------------------------------------------------------------
+    # ID-level assignment pool (prefill) — drives completion by ID
+    # EXHAUSTION rather than by completed-interview count.
+    #
+    # Every assigned ID (person_id) in the prefill sampling frame belongs to a
+    # mauza and a category (track_cat 3 = urban, 1/2 = rural). An ID is
+    # "touched" once it appears in ANY survey submission, whatever the final
+    # disposition (completed, refused, locked, respondent died, not found...).
+    # "Remaining IDs" for a mauza = assigned pool - touched, split urban/rural.
+    #
+    # A mauza's URBAN IDs are the binding constraint: once every assigned urban
+    # ID has been touched (urban_remaining == 0), the mauza is Completed even if
+    # some rural IDs are still untouched (leftover rural does not block it).
+    # For purely rural mauzas (no urban IDs assigned) there is nothing urban to
+    # exhaust, so completion falls back to rural completed interviews >= target.
+    # ------------------------------------------------------------------
+    pf = prefill.copy()
+    pf["pid"] = pf["person_id"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+    pf["mz"]  = pf["Mauza"].astype(str).str.strip()
+    pf["cat"] = pf["track_cat"].map(lambda x: "urban" if x in URBAN_CATS else "rural")
+    pf = pf.drop_duplicates("pid")
+    touched_ids = set(df["person_id"].astype(str)
+                        .str.replace(r"\.0$", "", regex=True).str.strip())
+    pf["is_touched"] = pf["pid"].isin(touched_ids)
+    pool_urban  = pf[pf["cat"] == "urban"].groupby("mz").size()
+    pool_rural  = pf[pf["cat"] == "rural"].groupby("mz").size()
+    touch_urban = pf[(pf["cat"] == "urban") & pf["is_touched"]].groupby("mz").size()
+    touch_rural = pf[(pf["cat"] == "rural") & pf["is_touched"]].groupby("mz").size()
+
     rows = []
     for _, r in target.iterrows():
         mauza = r["Mauza_sample"]
+        mz = str(mauza).strip()
         ud = int(done_by_mauza["urban_done"].get(mauza, 0)) if mauza in done_by_mauza.index else 0
         rd = int(done_by_mauza["rural_done"].get(mauza, 0)) if mauza in done_by_mauza.index else 0
         td = int(done_by_mauza["total_done"].get(mauza, 0)) if mauza in done_by_mauza.index else 0
@@ -330,7 +361,24 @@ def main():
         ut = int(r["urban_target"])
         rt = int(r["rural_target"])
         pct = round(100 * td / tt, 1) if tt else 0.0
-        if tt and td >= tt:
+
+        # assigned ID pool + remaining (untouched) IDs, per category
+        pu = int(pool_urban.get(mz, 0))
+        pr = int(pool_rural.get(mz, 0))
+        tu = int(touch_urban.get(mz, 0))
+        tr = int(touch_rural.get(mz, 0))
+        urban_remaining = max(pu - tu, 0)
+        rural_remaining = max(pr - tr, 0)
+        total_remaining = urban_remaining + rural_remaining
+
+        # A category (urban / rural) is "done" once EITHER its completed target
+        # is met OR every assigned ID has been touched (exhausted — the shortfall
+        # is refusals/not-found with no replacement IDs left to try). A mauza is
+        # Completed only when BOTH urban and rural are done; the rule is
+        # symmetric across the two categories.
+        urban_ok = (ut > 0 and ud >= ut) or urban_remaining == 0
+        rural_ok = (rt > 0 and rd >= rt) or rural_remaining == 0
+        if (touched or td > 0) and urban_ok and rural_ok:
             status = "Completed"
         elif td > 0 or touched:
             # field work has begun (completed interviews and/or visits made)
@@ -343,6 +391,10 @@ def main():
             "urban_done": ud, "urban_target": ut,
             "rural_done": rd, "rural_target": rt,
             "total_done": td, "total_target": tt,
+            "urban_pool": pu, "rural_pool": pr,
+            "urban_remaining": urban_remaining,
+            "rural_remaining": rural_remaining,
+            "total_remaining": total_remaining,
             "touched": touched,
             "pct": pct, "status": status,
         })

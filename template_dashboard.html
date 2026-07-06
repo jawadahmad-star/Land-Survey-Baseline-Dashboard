@@ -119,6 +119,10 @@
     .mz-tehsil { font-size:11px; color:var(--n-400); text-transform:uppercase; letter-spacing:.4px; }
     .mz-frac { font-weight:600; }
     .mz-frac .done { color:var(--rs-navy); } .mz-frac .sep { color:var(--n-400); } .mz-frac .tgt { color:var(--n-400); }
+    .mz-rem { font-weight:600; white-space:nowrap; }
+    .mz-rem .rem-lab { font-size:11px; margin-right:2px; opacity:.85; }
+    .mz-rem .rem-open { color:var(--amber-600); } .mz-rem .rem-done { color:var(--green-600); }
+    .mz-rem .sep { color:var(--n-400); margin:0 5px; }
     .mz-bar { height:7px; width:90px; background:var(--n-100); border-radius:99px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:8px; }
     .mz-bar > span { display:block; height:100%; border-radius:99px; }
     .mz-pct { font-weight:700; font-size:12.5px; }
@@ -377,7 +381,7 @@
       <div class="section-header-accent"></div>
       <div>
         <h2>Mouza Completion Tracker</h2>
-        <p>Live completion status for every mouza in the sampling frame — completed interviews against target, split into urban and rural. Search by mouza or tehsil, filter by status, and click any column to sort.</p>
+        <p>Live completion status for every mouza in the sampling frame — completed interviews (urban / rural) plus the assigned IDs still remaining. A mouza is <strong>Completed</strong> when both urban and rural are done, where each side is done once it either meets its completed target <em>or</em> has run out of IDs (every assigned ID touched — only refusals left, none to replace them). It stays <strong>In Progress</strong> while either side still has untouched IDs and an unmet target. Search by mouza or tehsil, filter by status, and click any column to sort.</p>
       </div>
     </div>
     <div class="kpi-grid" id="mz-kpis"></div>
@@ -402,6 +406,7 @@
             <th class="num" data-sort="urban_done">Urban Completed <span class="arrow"></span></th>
             <th class="num" data-sort="rural_done">Rural Completed <span class="arrow"></span></th>
             <th class="num" data-sort="total_done">Total Completed <span class="arrow"></span></th>
+            <th class="num" data-sort="total_remaining">Remaining IDs <span class="arrow"></span></th>
             <th data-sort="pct">Completion <span class="arrow">▼</span></th>
             <th data-sort="status">Status <span class="arrow"></span></th>
           </tr>
@@ -409,7 +414,7 @@
         <tbody id="mz-body"></tbody>
       </table>
     </div>
-    <p class="footnote">Urban = respondents tracked in the city; Rural = respondents tracked in the village (per the PULSE sampling tracker). Completion % = total completed ÷ mouza target. Sorted by completion by default.</p>
+    <p class="footnote">Urban = respondents tracked in the city; Rural = respondents tracked in the village (per the PULSE sampling tracker). <strong>Remaining IDs</strong> (🏙️ urban · 🌾 rural) = assigned IDs in the sampling pool not yet touched by the field team — an ID is "touched" at any final outcome (completed, refused, locked, respondent not found, etc.). <strong>Status:</strong> a mouza is <em>Completed</em> when both urban and rural are done — each side is done once it hits its completed target <em>or</em> its remaining IDs reach 0 (all IDs touched, only refusals left). Completion % = total completed interviews ÷ mouza target. Sorted by activity/completion by default.</p>
   </div>
 
   <!-- INTERVENTION -->
@@ -799,6 +804,7 @@ function renderMouzaTable(){
       <td class="num"><span class="mz-frac"><span class="done">${r.urban_done}</span><span class="sep"> / </span><span class="tgt">${r.urban_target}</span></span></td>
       <td class="num"><span class="mz-frac"><span class="done">${r.rural_done}</span><span class="sep"> / </span><span class="tgt">${r.rural_target}</span></span></td>
       <td class="num"><span class="mz-frac"><span class="done">${r.total_done}</span><span class="sep"> / </span><span class="tgt">${r.total_target}</span></span></td>
+      <td class="num"><span class="mz-rem"><span class="rem-lab">🏙️</span><span class="${r.urban_remaining>0?'rem-open':'rem-done'}">${r.urban_remaining}</span><span class="sep"> · </span><span class="rem-lab">🌾</span><span class="${r.rural_remaining>0?'rem-open':'rem-done'}">${r.rural_remaining}</span></span></td>
       <td><span class="mz-bar"><span style="width:${pct}%;background:${barColor(r.pct)}"></span></span><span class="mz-pct" style="color:${barColor(r.pct)}">${r.pct}%</span></td>
       <td>${statusBadge(r.status)}</td>
     </tr>`;
