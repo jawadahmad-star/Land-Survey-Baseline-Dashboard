@@ -379,7 +379,12 @@ def main():
         tt = int(r["target_final"])
         ut = int(r["urban_target"])
         rt = int(r["rural_target"])
-        pct = round(100 * td / tt, 1) if tt else 0.0
+        # Completion % caps each category at its own target so over-achievement
+        # in one category (e.g. rural 11/10) cannot mask a shortfall in the
+        # other (e.g. urban 9/10). 100% is reached only when BOTH the urban and
+        # rural targets are met — an excess never compensates for a deficit.
+        capped_done = min(ud, ut) + min(rd, rt)
+        pct = round(100 * capped_done / tt, 1) if tt else 0.0
 
         # assigned ID pool + remaining (untouched) IDs, per category
         pu = int(pool_urban.get(mz, 0))
