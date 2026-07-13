@@ -45,6 +45,10 @@ TARGET_OVERRIDE = {"total": 3750, "urban": 1250, "rural": 2500}
 # Progress. Status only — completed counts, targets and % are untouched.
 FORCE_COMPLETE_MAUZAS = {"CHAKNO39JANUBI", "CHAKNO110JANUBI"}
 
+# Same sign-off override for the Intervention tab (visits done < assigned pool,
+# but the field team has closed the mouza out). Status only.
+FORCE_COMPLETE_IV_MAUZAS = {"CHAKNO80JANUBI", "CHAKNO44JANUBI"}
+
 
 def vc(series, labels=None, dropna=True):
     """value_counts as ordered list of {label, value} using a label map."""
@@ -158,6 +162,8 @@ def build_intervention(comp, n_complete):
             status = "In Progress"
         else:
             status = "Not Started"
+        if str(mauza).strip() in FORCE_COMPLETE_IV_MAUZAS:
+            status = "Completed"
         mauza_rows.append({
             "mauza": mauza,
             "tehsil": tehsil_by_mauza.get(mauza, ""),
