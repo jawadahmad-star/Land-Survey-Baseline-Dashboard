@@ -40,6 +40,11 @@ RURAL_CATS = {1, 2}          # track_cat: 1,2 = village (rural)
 # (Per-mouza Mouza Completion table always uses target_file.xlsx.)
 TARGET_OVERRIDE = {"total": 3750, "urban": 1250, "rural": 2500}
 
+# Mouzas signed off as Completed by the field team even though the automatic
+# rule (targets met OR assigned IDs exhausted) still reports them as In
+# Progress. Status only — completed counts, targets and % are untouched.
+FORCE_COMPLETE_MAUZAS = {"CHAKNO39JANUBI", "CHAKNO110JANUBI"}
+
 
 def vc(series, labels=None, dropna=True):
     """value_counts as ordered list of {label, value} using a label map."""
@@ -409,6 +414,8 @@ def main():
             status = "In Progress"
         else:
             status = "Not Started"
+        if mz in FORCE_COMPLETE_MAUZAS:
+            status = "Completed"
         rows.append({
             "mauza": mauza,
             "tehsil": r["Tehsil_sample"],
