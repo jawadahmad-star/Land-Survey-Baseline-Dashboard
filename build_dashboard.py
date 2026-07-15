@@ -43,7 +43,9 @@ TARGET_OVERRIDE = {"total": 3750, "urban": 1250, "rural": 2500}
 # Mouzas signed off as Completed by the field team even though the automatic
 # rule (targets met OR assigned IDs exhausted) still reports them as In
 # Progress. Status only — completed counts, targets and % are untouched.
-FORCE_COMPLETE_MAUZAS = {"CHAKNO39JANUBI", "CHAKNO110JANUBI"}
+# (CHAKNO39JANUBI / CHAKNO110JANUBI removed by request — they now follow the
+# normal rule and stay In Progress until the data makes them Completed.)
+FORCE_COMPLETE_MAUZAS = set()
 
 # Same sign-off override for the Intervention tab (visits done < assigned pool,
 # but the field team has closed the mouza out). Status only.
