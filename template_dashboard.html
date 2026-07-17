@@ -563,6 +563,10 @@ const L = a => a.map(x=>x.label);
 const V = a => a.map(x=>x.value);
 // convert {label,value} counts -> percentage of total (rounded)
 const P = a => { const t=a.reduce((s,x)=>s+x.value,0)||1; return a.map(x=>({label:x.label, value:Math.round(100*x.value/t)})); };
+// ISO date (2026-07-16) -> "16 Jul" for axis ticks, "16 Jul 2026" for tooltips.
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDay(iso){ const p=String(iso).split('-'); return p.length===3 ? p[2]+' '+MON[+p[1]-1] : String(iso); }
+function fullDay(iso){ const p=String(iso).split('-'); return p.length===3 ? p[2]+' '+MON[+p[1]-1]+' '+p[0] : String(iso); }
 // Wrap a long category label into short lines so the full text stays
 // readable directly on the axis (no hover/tooltip needed).
 function wrapTick(label, max){
@@ -651,7 +655,7 @@ function renderAll(){
     callout('navy','⏱️','Pace', 'Median interview takes '+m.avg_duration+' minutes across '+m.field_days+' field days.');
 
   // Overview charts
-  lineChart('chartDaily', D.daily);
+  lineChart('chartDaily', D.daily, 'completed interviews');
   progressDonut('chartProgress', m.n_complete, m.total_target);
   donutChart('chartUrbanRural', [{label:'Urban',value:m.urban_done},{label:'Rural',value:m.rural_done}], [TEAL, AMBER]);
   barChart('chartTehsil', D.tehsil_split, NAVY, false);
@@ -724,11 +728,18 @@ function renderAll(){
 }
 
 function pctOf(a,b){ return b? Math.round(100*a/b):0; }
-function lineChart(id, arr){
+function lineChart(id, arr, noun){
   const el=document.getElementById(id); if(!el) return;
-  new Chart(el,{type:'line', data:{labels:arr.map(x=>x.date), datasets:[{data:arr.map(x=>x.count), borderColor:RED, backgroundColor:'rgba(232,25,44,.10)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:RED, borderWidth:3}]},
-    options:baseOpts({plugins:{legend:{display:false}, datalabels:{display:true,anchor:'end',align:'top',color:NAVY,font:{family:'Inter',size:11,weight:'700'}}},
-      scales:{x:{ticks:{font:{family:'Inter',size:11},color:'#475569'},grid:{display:false}},y:{beginAtZero:true,ticks:{font:{family:'Inter',size:11},color:'#475569',precision:0},grid:{color:GRID}}}})});
+  const many = arr.length > 14;
+  new Chart(el,{type:'line', data:{labels:arr.map(x=>fmtDay(x.date)), datasets:[{data:arr.map(x=>x.count), borderColor:RED, backgroundColor:'rgba(232,25,44,.10)', fill:true, tension:.3, pointRadius:many?3:4, pointHoverRadius:6, pointBackgroundColor:RED, borderWidth:many?2:3}]},
+    // The top padding reserves canvas space above the plot area so the value
+    // label of the tallest point still fits; without it the peak days render
+    // with no number at all.
+    options:baseOpts({layout:{padding:{top:24}},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{title:it=>fullDay(arr[it[0].dataIndex].date), label:c=>c.parsed.y.toLocaleString()+' '+(noun||'')}},
+        datalabels:{display:'auto',anchor:'end',align:'top',offset:4,clamp:true,clip:false,color:NAVY,font:{family:'Inter',size:many?10:11,weight:'700'}}},
+      scales:{x:{ticks:{font:{family:'Inter',size:11},color:'#475569',autoSkip:false,maxRotation:45,minRotation:45},grid:{display:false}},y:{beginAtZero:true,ticks:{font:{family:'Inter',size:11},color:'#475569',precision:0},grid:{color:GRID}}}})});
 }
 function progressDonut(id, done, target){
   const el=document.getElementById(id); if(!el) return;
@@ -842,7 +853,7 @@ function buildIvPanel(){
     callout('navy','⏱️','Pace', 'Median intervention visit takes '+m.avg_duration+' minutes across '+m.field_days+' field days.');
 
   // ---- Charts ----
-  lineChart('chartIvDaily', IV.daily);
+  lineChart('chartIvDaily', IV.daily, 'intervention visits');
   progressDonut('chartIvProgress', m.n_iv, m.eligible);
   donutChart('chartIvTreat', IV.treat, [TEAL, PURPLE, '#94a3b8']);
   donutChart('chartIvArm', IV.arm, [NAVY, AMBER, '#94a3b8']);
