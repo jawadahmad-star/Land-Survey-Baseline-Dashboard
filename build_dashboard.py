@@ -73,6 +73,32 @@ def mean_scale(series):
     return round(float(s.mean()), 2) if len(s.dropna()) else 0.0
 
 
+def field_dates(frame):
+    """Date each interview was actually done, as a Series of datetime.date.
+
+    `starttime` comes off the tablet clock, so a device with a wrong date
+    stamps interviews weeks into the future (e.g. 1 Aug uploads carrying a
+    31 Aug starttime), which pushes phantom points onto the daily charts and
+    leaves month-long gaps on the axis. `submissiondate` is set by the server
+    and is always right, so it is used as the fallback whenever starttime is
+    implausible: missing, later than the upload, or in the future.
+
+    A starttime up to one day ahead of the upload is kept as-is — that is the
+    normal near-midnight interview submitted just after 00:00, not a bad clock.
+    """
+    st = pd.to_datetime(frame["starttime"], errors="coerce") \
+        if "starttime" in frame.columns else pd.Series(pd.NaT, index=frame.index)
+    sd = pd.to_datetime(frame["submissiondate"], errors="coerce") \
+        if "submissiondate" in frame.columns else pd.Series(pd.NaT, index=frame.index)
+
+    today = pd.Timestamp(dt.date.today())
+    bad = st.isna() | (st > today + pd.Timedelta(days=1))
+    bad |= sd.notna() & (st > sd + pd.Timedelta(days=1))
+
+    fixed = st.mask(bad, sd)
+    return fixed.dropna().dt.date
+
+
 def build_intervention(comp, n_complete):
     """Compute the Intervention tab payload.
 
@@ -180,10 +206,8 @@ def build_intervention(comp, n_complete):
 
     # ---- Daily intervention visits ----
     daily = {}
-    if "starttime" in ivc.columns:
-        st = pd.to_datetime(ivc["starttime"], errors="coerce")
-        for d in st.dropna().dt.date:
-            daily[d.isoformat()] = daily.get(d.isoformat(), 0) + 1
+    for d in field_dates(ivc):
+        daily[d.isoformat()] = daily.get(d.isoformat(), 0) + 1
     daily_list = [{"date": k, "count": v} for k, v in sorted(daily.items())]
     last_date = daily_list[-1]["date"] if daily_list else ""
 
@@ -294,11 +318,9 @@ def main():
     # Daily COMPLETED interviews (sums to n_complete = 76)
     # ------------------------------------------------------------------
     daily = {}
-    if "starttime" in comp.columns:
-        st = pd.to_datetime(comp["starttime"], errors="coerce")
-        for d in st.dropna().dt.date:
-            key = d.isoformat()
-            daily[key] = daily.get(key, 0) + 1
+    for d in field_dates(comp):
+        key = d.isoformat()
+        daily[key] = daily.get(key, 0) + 1
     daily_list = [{"date": k, "count": v} for k, v in sorted(daily.items())]
 
     # ------------------------------------------------------------------
