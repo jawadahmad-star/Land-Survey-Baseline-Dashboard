@@ -47,6 +47,16 @@ TARGET_OVERRIDE = {"total": 3750, "urban": 1250, "rural": 2500}
 # normal rule and stay In Progress until the data makes them Completed.)
 FORCE_COMPLETE_MAUZAS = set()
 
+# Interviews whose tablet clock was wrong in a way `field_dates()` cannot catch
+# on its own — starttime AND submissiondate both land on a day the team was not
+# in the field, so the server fallback is no help. Keyed by submission `key`
+# uuid -> the true field date, confirmed with the field team.
+#   uuid:8c3d1c48… : enum 127, hh_id 69. Device clock ran a day ahead; the
+#   interview was actually done on 1 Aug 2026 — no field work on 2 Aug 2026.
+DATE_OVERRIDES = {
+    "uuid:8c3d1c48-ac7d-4faa-90c5-b45ffaef9aab": dt.date(2026, 8, 1),
+}
+
 # Same sign-off override for the Intervention tab (visits done < assigned pool,
 # but the field team has closed the mouza out). Status only.
 FORCE_COMPLETE_IV_MAUZAS = {"CHAKNO80JANUBI", "CHAKNO44JANUBI"}
@@ -85,6 +95,9 @@ def field_dates(frame):
 
     A starttime up to one day ahead of the upload is kept as-is — that is the
     normal near-midnight interview submitted just after 00:00, not a bad clock.
+
+    `DATE_OVERRIDES` wins over both, for the cases where the device clock was
+    off by a whole day so starttime *and* submissiondate are equally wrong.
     """
     st = pd.to_datetime(frame["starttime"], errors="coerce") \
         if "starttime" in frame.columns else pd.Series(pd.NaT, index=frame.index)
@@ -96,6 +109,12 @@ def field_dates(frame):
     bad |= sd.notna() & (st > sd + pd.Timedelta(days=1))
 
     fixed = st.mask(bad, sd)
+
+    if DATE_OVERRIDES and "key" in frame.columns:
+        ov = pd.to_datetime(
+            frame["key"].astype(str).map(DATE_OVERRIDES), errors="coerce")
+        fixed = fixed.mask(ov.notna(), ov)
+
     return fixed.dropna().dt.date
 
 
