@@ -61,6 +61,35 @@ DATE_OVERRIDES = {
 # but the field team has closed the mouza out). Status only.
 FORCE_COMPLETE_IV_MAUZAS = {"CHAKNO80JANUBI", "CHAKNO44JANUBI"}
 
+# Display names for the tehsil chart. The raw `tehsil` field is ALL-CAPS and
+# runs multi-word names together (KOTMOMIN), which reads badly on the axis, so
+# map each code to its proper spelling. Anything unmapped falls back to title
+# case; blank / unknown tehsils are dropped from the chart entirely.
+TEHSIL_LABELS = {
+    "SARGODHA":   "Sargodha",
+    "SAHIWAL":    "Sahiwal",
+    "KOTMOMIN":   "Kot Momin",
+    "SILLANWALI": "Sillanwali",
+    "BHALWAL":    "Bhalwal",
+    "BHERA":      "Bhera",
+    "SHAHPUR":    "Shahpur",
+}
+
+
+def tehsil_counts(series):
+    """Completed interviews per tehsil, properly labelled.
+
+    Records with a blank tehsil are orphans (no person_id, not in the prefill
+    sampling frame) and are excluded so they do not surface as a nameless bar.
+    """
+    s = series.astype(str).str.strip().str.upper()
+    s = s[~s.isin({"", "NAN", "NONE"})]
+    counts = s.value_counts()
+    return [
+        {"label": TEHSIL_LABELS.get(k, k.title()), "value": int(v)}
+        for k, v in counts.items()
+    ]
+
 
 def vc(series, labels=None, dropna=True):
     """value_counts as ordered list of {label, value} using a label map."""
@@ -493,7 +522,7 @@ def main():
     resp_type   = vc(comp["resp_type"],     lab("resp_type"),     dropna=False)
     marital     = vc(comp["marital_status"], lab("marital_status"), dropna=False)
     smartphone  = vc(comp["smart_phone"],   lab("smart_phone"),   dropna=False)
-    tehsil_split = vc(comp["tehsil"], dropna=False)
+    tehsil_split = tehsil_counts(comp["tehsil"])
 
     land_in_name = vc(comp["land_in_name"], lab("land_in_name"), dropna=False)
     father_died  = vc(comp["father_died"],  lab("father_died"),  dropna=False)
