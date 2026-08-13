@@ -104,6 +104,9 @@
     .mz-search:focus { border-color:var(--rs-red); }
     .mz-filter { padding:10px 14px; border:2px solid var(--n-200); border-radius:10px; font-family:'Inter',sans-serif; font-size:13px; color:var(--rs-navy); background:#fff; cursor:pointer; outline:none; }
     .mz-filter:focus { border-color:var(--rs-red); }
+    .mz-export { display:inline-flex; align-items:center; gap:7px; padding:10px 16px; border:2px solid var(--rs-navy); border-radius:10px; background:var(--rs-navy); color:#fff; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; cursor:pointer; outline:none; transition:all .2s; white-space:nowrap; }
+    .mz-export:hover { background:var(--rs-red); border-color:var(--rs-red); }
+    .mz-export:active { transform:translateY(1px); }
     .mz-count { font-size:12.5px; color:var(--n-600); font-weight:600; margin-left:auto; }
 
     .mz-table-wrap { background:white; border-radius:14px; box-shadow:0 1px 4px rgba(45,52,80,.07),0 4px 16px rgba(45,52,80,.05); overflow:hidden; }
@@ -395,6 +398,7 @@
         <option value="all">All mouzas</option>
       </select>
       <select id="mz-tehsil" class="mz-filter" onchange="renderMouzaTable()"></select>
+      <button type="button" class="mz-export" onclick="exportMouzaCSV()" title="Download the rows currently shown (search, filter and sort applied) as a CSV file">⬇️ Export CSV</button>
       <span class="mz-count" id="mz-count"></span>
     </div>
     <div class="mz-table-wrap">
@@ -482,6 +486,7 @@
         <option value="all">All eligible mouzas</option>
       </select>
       <select id="iv-tehsil" class="mz-filter" onchange="renderIvTable()"></select>
+      <button type="button" class="mz-export" onclick="exportIvCSV()" title="Download the rows currently shown (search, filter and sort applied) as a CSV file">⬇️ Export CSV</button>
       <span class="mz-count" id="iv-count"></span>
     </div>
     <div class="mz-table-wrap">
@@ -790,6 +795,53 @@ function statusBadge(s){
   return '<span class="badge badge-grey">○ Not Started</span>';
 }
 function barColor(p){ return p>=100?GREEN : p>=50?AMBER : p>0?RED : '#cbd5e1'; }
+
+// ---- CSV export helper -------------------------------------------------
+// Builds a UTF-8 CSV (with BOM so Excel reads Urdu/accented names correctly)
+// and triggers a download. `cols` = [[Header, r=>value], ...]
+function downloadCSV(filename, cols, rows){
+  if(!rows.length){ alert('No rows to export — clear the search / filters first.'); return; }
+  const esc=v=>{ v=(v===null||v===undefined)?'':String(v); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+  const lines=[cols.map(c=>esc(c[0])).join(',')];
+  rows.forEach(r=>lines.push(cols.map(c=>esc(c[1](r))).join(',')));
+  const blob=new Blob(['﻿'+lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function stamp(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+
+let mzRowsShown=[], ivRowsShown=[];
+function exportMouzaCSV(){
+  downloadCSV('mouza_completion_'+stamp()+'.csv', [
+    ['Mouza',            r=>r.mauza],
+    ['Tehsil',           r=>r.tehsil],
+    ['Urban Completed',  r=>r.urban_done],
+    ['Urban Target',     r=>r.urban_target],
+    ['Rural Completed',  r=>r.rural_done],
+    ['Rural Target',     r=>r.rural_target],
+    ['Total Completed',  r=>r.total_done],
+    ['Total Target',     r=>r.total_target],
+    ['Urban Remaining IDs', r=>r.urban_remaining],
+    ['Rural Remaining IDs', r=>r.rural_remaining],
+    ['Total Remaining IDs', r=>r.total_remaining],
+    ['Completion %',     r=>r.pct],
+    ['Status',           r=>r.status]
+  ], mzRowsShown);
+}
+function exportIvCSV(){
+  downloadCSV('mouza_intervention_status_'+stamp()+'.csv', [
+    ['Mouza',               r=>r.mauza],
+    ['Tehsil',              r=>r.tehsil],
+    ['Intervention Done',   r=>r.done],
+    ['Eligible (Baseline)', r=>r.eligible],
+    ['Completion %',        r=>r.pct],
+    ['Status',              r=>r.status]
+  ], ivRowsShown);
+}
+
 function renderMouzaTable(){
   const D=DASHBOARD_DATA;
   const q=(document.getElementById('mz-search').value||'').toUpperCase().replace(/\s/g,'');
@@ -805,6 +857,7 @@ function renderMouzaTable(){
   });
   const k=mzSort.key, dir=mzSort.dir;
   rows.sort((a,b)=>{ let x=a[k],y=b[k]; if(typeof x==='string'){return x.localeCompare(y)*dir;} return (x-y)*dir; });
+  mzRowsShown=rows;
 
   const body=document.getElementById('mz-body');
   body.innerHTML = rows.map(r=>{
@@ -893,6 +946,7 @@ function renderIvTable(){
   });
   const k=ivSort.key, dir=ivSort.dir;
   rows.sort((a,b)=>{ let x=a[k],y=b[k]; if(typeof x==='string'){return x.localeCompare(y)*dir;} return (x-y)*dir; });
+  ivRowsShown=rows;
 
   const body=document.getElementById('iv-body');
   body.innerHTML = rows.map(r=>{
