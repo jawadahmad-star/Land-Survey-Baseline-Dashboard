@@ -663,7 +663,9 @@ function renderAll(){
   lineChart('chartDaily', D.daily, 'completed interviews');
   progressDonut('chartProgress', m.n_complete, m.total_target);
   donutChart('chartUrbanRural', [{label:'Urban',value:m.urban_done},{label:'Rural',value:m.rural_done}], [TEAL, AMBER]);
-  barChart('chartTehsil', D.tehsil_split, NAVY, false);
+  // horizontal: each tehsil label gets its own row, so names never collide
+  // with one another however narrow the card gets.
+  barChart('chartTehsil', D.tehsil_split, NAVY, true);
 
   // ---- Respondent profile ----
   const ms = D.marital;
