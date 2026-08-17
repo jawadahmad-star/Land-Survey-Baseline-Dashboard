@@ -59,7 +59,12 @@ DATE_OVERRIDES = {
 
 # Same sign-off override for the Intervention tab (visits done < assigned pool,
 # but the field team has closed the mouza out). Status only.
-FORCE_COMPLETE_IV_MAUZAS = {"CHAKNO80JANUBI", "CHAKNO44JANUBI"}
+# THATHILAMBI / AHLIKAMBOH: the shortfall is an hh_id mismatch, not missing
+# work — the field team has completed both.
+FORCE_COMPLETE_IV_MAUZAS = {
+    "CHAKNO80JANUBI", "CHAKNO44JANUBI",
+    "THATHILAMBI", "AHLIKAMBOH",
+}
 
 # Display names for the tehsil chart. The raw `tehsil` field is ALL-CAPS and
 # runs multi-word names together (KOTMOMIN), which reads badly on the axis, so
