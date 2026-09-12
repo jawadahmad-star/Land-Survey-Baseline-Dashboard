@@ -645,24 +645,31 @@ function renderAll(){
   document.getElementById('banner-pill').textContent = m.pct_complete + '% of target';
 
   // ---- Overview KPIs ----
+  const hasUnclassified = (m.unclassified_done||0) > 0;
   document.getElementById('ov-kpis').innerHTML =
     kpi('✅', m.n_complete.toLocaleString(), 'Completed Interviews', m.pct_complete+'% of '+m.total_target.toLocaleString()+' target', 'up', 'green') +
     kpi('🎯', m.total_target.toLocaleString(), 'District Target', m.urban_target+' urban · '+m.rural_target+' rural', 'navy', 'navy') +
     kpi('🏙️', m.urban_done.toLocaleString(), 'Urban Completed', 'Target '+m.urban_target.toLocaleString(), 'teal', 'teal') +
     kpi('🌾', m.rural_done.toLocaleString(), 'Rural Completed', 'Target '+m.rural_target.toLocaleString(), 'up', 'amber') +
+    (hasUnclassified ? kpi('❓', m.unclassified_done.toLocaleString(), 'Unclassified — Needs Verification', 'hh_id not in current sampling frame', 'neutral') : '') +
     kpi('🗺️', m.mauzas_started+' / '+m.n_target_mauzas, 'Mouzas Started', m.mauzas_completed+' fully completed', 'navy', 'purple') +
     kpi('🤝', m.consent_rate+'%', 'Consent Rate', m.field_days+' field days', 'up');
 
   document.getElementById('ov-callouts').innerHTML =
     callout('teal','🏙️','Urban Coverage', m.urban_done+' of '+m.urban_target+' urban interviews complete ('+pctOf(m.urban_done,m.urban_target)+'%).') +
     callout('amber','🌾','Rural Coverage', m.rural_done+' of '+m.rural_target+' rural interviews complete ('+pctOf(m.rural_done,m.rural_target)+'%).') +
+    (hasUnclassified ? callout('primary','❓','Unclassified — Needs Verification', m.unclassified_done+' completed household(s) have an hh_id with no matching row anywhere in the current prefill sampling frame, so urban/rural cannot be determined. Counted in Completed Interviews but shown separately here rather than assumed rural — needs verification against the sampling frame.') : '') +
     callout('primary','🗺️','Mouza Reach', m.mauzas_started+' of '+m.n_target_mauzas+' sampled mouzas have been reached by the field team ('+m.mauzas_completed+' fully completed).') +
     callout('navy','⏱️','Pace', 'Median interview takes '+m.avg_duration+' minutes across '+m.field_days+' field days.');
 
   // Overview charts
   lineChart('chartDaily', D.daily, 'completed interviews');
   progressDonut('chartProgress', m.n_complete, m.total_target);
-  donutChart('chartUrbanRural', [{label:'Urban',value:m.urban_done},{label:'Rural',value:m.rural_done}], [TEAL, AMBER]);
+  donutChart('chartUrbanRural',
+    hasUnclassified
+      ? [{label:'Urban',value:m.urban_done},{label:'Rural',value:m.rural_done},{label:'Unclassified',value:m.unclassified_done}]
+      : [{label:'Urban',value:m.urban_done},{label:'Rural',value:m.rural_done}],
+    hasUnclassified ? [TEAL, AMBER, '#94a3b8'] : [TEAL, AMBER]);
   // horizontal: each tehsil label gets its own row, so names never collide
   // with one another however narrow the card gets.
   barChart('chartTehsil', D.tehsil_split, NAVY, true);

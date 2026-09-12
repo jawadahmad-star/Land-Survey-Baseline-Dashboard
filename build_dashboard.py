@@ -406,6 +406,16 @@ def main():
 
     urban_done = int(comp["is_urban"].sum())
     rural_done = int(comp["is_rural"].sum())
+    # Households whose hh_id has no matching row anywhere in the current
+    # prefill sampling frame (urban_rural == "not present in prefill") are
+    # genuinely un-classifiable — checked against target_file.xlsx and every
+    # one of their mauzas has BOTH an urban_target and a rural_target > 0
+    # (mixed mauza), so there is no single-type mauza fallback that can place
+    # them safely. They must NOT be silently folded into rural (that was the
+    # original bug) — shown instead as an explicit, honestly-labelled bucket
+    # so the headline total always reconciles: urban + rural + unclassified
+    # == n_complete, exactly, every build.
+    unclassified_done = int((~comp["is_urban"] & ~comp["is_rural"]).sum())
 
     # ------------------------------------------------------------------
     # Mouza completion table
@@ -657,6 +667,17 @@ def main():
     intervention = build_intervention(comp, n_complete)
 
     # ------------------------------------------------------------------
+    # Arithmetic invariant: the headline breakdown must always sum back to
+    # the headline total. Fail loudly rather than ship a dashboard where
+    # urban + rural (+ unclassified) != Completed Interviews.
+    # ------------------------------------------------------------------
+    assert urban_done + rural_done + unclassified_done == n_complete, (
+        f"Urban/rural/unclassified do not reconcile: {urban_done} + {rural_done} "
+        f"+ {unclassified_done} = {urban_done + rural_done + unclassified_done} "
+        f"!= n_complete ({n_complete})"
+    )
+
+    # ------------------------------------------------------------------
     # Assemble payload
     # ------------------------------------------------------------------
     data = {
@@ -670,6 +691,7 @@ def main():
             "rural_target": rural_target,
             "urban_done": urban_done,
             "rural_done": rural_done,
+            "unclassified_done": unclassified_done,
             "n_target_mauzas": n_target_mauzas,
             "n_tehsils": n_tehsils,
             "mauzas_started": mauzas_started,
@@ -721,7 +743,8 @@ def main():
 
     print(f"[OK] index.html generated  ({OUTPUT_FILE})")
     print(f"     Completed interviews : {n_complete}")
-    print(f"     Urban / Rural done   : {urban_done} / {rural_done}")
+    print(f"     Urban / Rural done   : {urban_done} / {rural_done}"
+          + (f"  (+{unclassified_done} unclassified)" if unclassified_done else ""))
     print(f"     District target      : {total_target}  ({urban_target} urban / {rural_target} rural)")
     print(f"     Mauzas started       : {mauzas_started} / {n_target_mauzas}")
     print(f"     Last field date      : {data['meta']['last_date']}")
