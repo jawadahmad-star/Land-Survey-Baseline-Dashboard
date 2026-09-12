@@ -343,7 +343,7 @@ def main():
     prefill = pd.read_excel(PREFILL_FILE)
 
     # ------------------------------------------------------------------
-    # Completed interviews + urban/rural tagging via prefill track_cat
+    # Completed interviews + urban/rural tagging
     # ------------------------------------------------------------------
     comp = df[df["status_survey"] == COMPLETE_STATUS].copy()
     # De-duplicate on hh_id: a household interview submitted/synced more than
@@ -357,12 +357,26 @@ def main():
     prefill["pid"] = prefill["person_id"].astype(str)
     pmap = prefill[["pid", "track_cat"]].drop_duplicates("pid")
     comp = comp.merge(pmap, on="pid", how="left")
-    comp["is_urban"] = comp["track_cat"].isin(URBAN_CATS)
-    comp["is_rural"] = comp["track_cat"].isin(RURAL_CATS)
-    # records that did not match prefill: classify by mauza dominant later;
-    # default unmatched to rural (village) since 95%+ of frame is rural
-    unmatched = comp["track_cat"].isna()
-    comp.loc[unmatched, "is_rural"] = True
+
+    if "urban_rural" in comp.columns:
+        # Authoritative source, confirmed with the survey manager: the
+        # dataset's own `urban_rural` variable (Data/add_urban_rural_tag.do —
+        # joined on hh_id against the prefill sheet's tracking_status text,
+        # baked into the .dta itself). Households the do-file could not match
+        # to any prefill row ("not present in prefill") are left unclassified
+        # here rather than defaulted to rural — silently defaulting them was
+        # the cause of a prior urban/rural miscount and must not recur.
+        comp["is_urban"] = comp["urban_rural"] == "urban"
+        comp["is_rural"] = comp["urban_rural"] == "rural"
+    else:
+        # Fallback for a raw export that hasn't been through
+        # add_urban_rural_tag.do yet: join prefill track_cat on person_id.
+        comp["is_urban"] = comp["track_cat"].isin(URBAN_CATS)
+        comp["is_rural"] = comp["track_cat"].isin(RURAL_CATS)
+        # records that did not match prefill: classify by mauza dominant later;
+        # default unmatched to rural (village) since 95%+ of frame is rural
+        unmatched = comp["track_cat"].isna()
+        comp.loc[unmatched, "is_rural"] = True
 
     n_complete = len(comp)
     n_submissions = len(df)
