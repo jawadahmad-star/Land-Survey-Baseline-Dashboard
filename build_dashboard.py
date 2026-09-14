@@ -368,6 +368,15 @@ def main():
         # the cause of a prior urban/rural miscount and must not recur.
         comp["is_urban"] = comp["urban_rural"] == "urban"
         comp["is_rural"] = comp["urban_rural"] == "rural"
+        # Households whose hh_id has no matching row anywhere in the current
+        # prefill sampling frame ("not present in prefill") are dropped from
+        # the dashboard entirely, per survey manager instruction: they cannot
+        # be verified against the sampling frame, so they should not inflate
+        # Completed Interviews or any downstream table (mauza tracker, tehsil
+        # split, demographics, intervention-eligible pool). Excluded here,
+        # before any stat is computed, so every number on the dashboard is
+        # consistent.
+        comp = comp[comp["is_urban"] | comp["is_rural"]].copy()
     else:
         # Fallback for a raw export that hasn't been through
         # add_urban_rural_tag.do yet: join prefill track_cat on person_id.
