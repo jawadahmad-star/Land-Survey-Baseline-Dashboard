@@ -61,9 +61,12 @@ DATE_OVERRIDES = {
 # but the field team has closed the mouza out). Status only.
 # THATHILAMBI / AHLIKAMBOH: the shortfall is an hh_id mismatch, not missing
 # work — the field team has completed both.
+# BOHLARIWALA (2026-09-15): the one remaining assigned respondent has died —
+# eligible count can never be reached, so the mouza is closed out as Complete.
 FORCE_COMPLETE_IV_MAUZAS = {
     "CHAKNO80JANUBI", "CHAKNO44JANUBI",
     "THATHILAMBI", "AHLIKAMBOH",
+    "BOHLARIWALA",
 }
 
 # Confirmed with the field team 2026-09-15: "Partial Complete" (status_survey
