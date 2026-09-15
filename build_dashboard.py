@@ -66,6 +66,13 @@ FORCE_COMPLETE_IV_MAUZAS = {
     "THATHILAMBI", "AHLIKAMBOH",
 }
 
+# Confirmed with the field team 2026-09-15: "Partial Complete" (status_survey
+# == 2) was selected by mistake on these Intervention submissions — the visit
+# was actually completed. Both statuses count as done for the Intervention
+# tab only (hh_id 5032 / CHAKNO80JANUBI, hh_id 3851 / WALA); the baseline
+# survey's own COMPLETE_STATUS filter is untouched.
+IV_COMPLETE_STATUSES = {1, 2}
+
 # Display names for the tehsil chart. The raw `tehsil` field is ALL-CAPS and
 # runs multi-word names together (KOTMOMIN), which reads badly on the axis, so
 # map each code to its proper spelling. Anything unmapped falls back to title
@@ -204,7 +211,7 @@ def build_intervention(comp, n_complete):
     a_map = asg.set_index("hh_id")["treatment_arm"].astype(str).str.strip()
 
     # ---- Completed intervention visits, de-duplicated on hh_id (earliest) ---
-    ivc = ivdf[ivdf["status_survey"] == COMPLETE_STATUS].copy()
+    ivc = ivdf[ivdf["status_survey"].isin(IV_COMPLETE_STATUSES)].copy()
     if "starttime" in ivc.columns:
         ivc = ivc.sort_values("starttime")
     ivc = ivc.drop_duplicates(subset="hh_id", keep="first")
