@@ -63,10 +63,13 @@ DATE_OVERRIDES = {
 # work — the field team has completed both.
 # BOHLARIWALA (2026-09-15): the one remaining assigned respondent has died —
 # eligible count can never be reached, so the mouza is closed out as Complete.
+# MEHTA (2026-09-15): the one remaining assigned hh_id (3184) has no baseline
+# interview at all — the intervention requires a completed baseline first, so
+# this household can never receive the intervention visit.
 FORCE_COMPLETE_IV_MAUZAS = {
     "CHAKNO80JANUBI", "CHAKNO44JANUBI",
     "THATHILAMBI", "AHLIKAMBOH",
-    "BOHLARIWALA",
+    "BOHLARIWALA", "MEHTA",
 }
 
 # Confirmed with the field team 2026-09-15: "Partial Complete" (status_survey
