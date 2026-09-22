@@ -66,10 +66,12 @@ DATE_OVERRIDES = {
 # MEHTA (2026-09-15): the one remaining assigned hh_id (3184) has no baseline
 # interview at all — the intervention requires a completed baseline first, so
 # this household can never receive the intervention visit.
+# BADR (2026-09-22): closed out by field team sign-off, 16/17 done.
 FORCE_COMPLETE_IV_MAUZAS = {
     "CHAKNO80JANUBI", "CHAKNO44JANUBI",
     "THATHILAMBI", "AHLIKAMBOH",
     "BOHLARIWALA", "MEHTA",
+    "BADR",
 }
 
 # Confirmed with the field team 2026-09-15: "Partial Complete" (status_survey
